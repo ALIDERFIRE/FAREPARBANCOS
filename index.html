@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saldos Bancarios</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0c1f3f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Saldos">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="icon" href="/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0b1b33;--ink2:#44526a;--mute:#8492a6;--bg:#f4f6fa;--card:#fff;--line:#e6eaf1;--soft:#f6f8fb;
+    --navy:#0c1f3f;--navy2:#132c57;--pri:#2456e6;--pri-s:#e9effe;--ok:#0e9f6e;--ok-s:#e6f6f0;--bad:#d9364c;--bad-s:#fdecef;
+    --r:14px;--sh:0 1px 2px rgba(11,27,51,.05),0 8px 24px -12px rgba(11,27,51,.12)
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14.5px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .oculto{display:none!important}
+  .num{font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .in{color:var(--ok)}.out{color:var(--bad)}
+  a{color:var(--pri);text-decoration:none;font-weight:500}a:hover{text-decoration:underline}
+
+  /* ---------- acceso ---------- */
+  #login{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(1200px 600px at 15% -10%,#1c3f7d 0,transparent 60%),linear-gradient(160deg,#0c1f3f,#0a1730)}
+  .lbox{width:100%;max-width:380px;background:#fff;border-radius:20px;padding:34px 30px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)}
+  .marca{display:flex;align-items:center;gap:11px;font-weight:700;font-size:16px;letter-spacing:-.01em}
+  .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#2456e6,#19c2a0);display:grid;place-items:center;color:#fff;flex:none}
+  .logo svg{width:20px;height:20px}
+  .lbox h2{margin:26px 0 4px;font-size:22px;letter-spacing:-.02em}
+  .lbox p{margin:0 0 18px;color:var(--mute)}
+
+  /* ---------- estructura ---------- */
+  .shell{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
+  aside{background:var(--navy);color:#fff;padding:22px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+  aside .marca{padding:0 8px 22px}
+  aside .marca small{display:block;font-weight:400;font-size:11.5px;color:#93a4c3;margin-top:1px}
+  nav{display:flex;flex-direction:column;gap:3px}
+  nav button{display:flex;align-items:center;gap:11px;background:none;border:0;color:#a9b8d4;padding:10px 12px;border-radius:10px;font:inherit;font-weight:500;cursor:pointer;text-align:left}
+  nav button svg{width:18px;height:18px;flex:none}
+  nav button:hover{background:rgba(255,255,255,.06);color:#fff}
+  nav button.on{background:var(--navy2);color:#fff;box-shadow:inset 3px 0 0 #4b7bff}
+  .quien{margin-top:auto;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);font-size:13px}
+  .quien b{display:block}.quien span{color:#93a4c3;font-size:12px}
+  .cont{min-width:0}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:20px 28px 6px}
+  .top h1{margin:0;font-size:22px;letter-spacing:-.02em}
+  .top p{margin:2px 0 0;color:var(--mute);font-size:13px}
+  main{padding:14px 28px 40px;max-width:1180px}
+
+  /* ---------- piezas ---------- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:14px;box-shadow:var(--sh)}
+  .card>h2{margin:0 0 14px;font-size:15px;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+  .card>h2 small{font-weight:400;color:var(--mute);font-size:12.5px}
+  .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+  .hero{background:linear-gradient(135deg,#0c1f3f 0,#1a3f86 70%,#2456e6 130%);color:#fff;border:0;padding:22px 24px;position:relative;overflow:hidden}
+  .hero:after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.06)}
+  .hero span{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#b6c6e6}
+  .hero b{display:block;font-size:34px;font-weight:700;letter-spacing:-.03em;margin:6px 0 2px}
+  .hero em{font-style:normal;font-size:13px;color:#c9d6f0}
+  .kpi{padding:15px 16px;margin:0;display:flex;gap:12px;align-items:center}
+  .kpi i{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-style:normal;font-size:17px;font-weight:700;flex:none}
+  .kpi i.g{background:var(--ok-s);color:var(--ok)}.kpi i.r{background:var(--bad-s);color:var(--bad)}.kpi i.b{background:var(--pri-s);color:var(--pri)}
+  .kpi span{display:block;color:var(--mute);font-size:12px}
+  .kpi b{display:block;font-size:17px;letter-spacing:-.02em}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:4px 0 14px}
+  .chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;font:inherit;font-size:13px;font-weight:500;color:var(--ink2)}
+  .chip:hover{border-color:#c5cfdf}
+  .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .chip .pt{width:9px;height:9px;border-radius:50%}
+  .sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+  .av{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px;flex:none;letter-spacing:.02em}
+  .av.s{width:30px;height:30px;border-radius:9px;font-size:11px}
+  .banco{padding:0;overflow:hidden}
+  .bh{display:flex;align-items:center;gap:12px;padding:15px 18px;border-bottom:1px solid var(--line);background:linear-gradient(#fff,#fbfcfe)}
+  .bh div.n{flex:1;min-width:0}.bh b{font-size:15.5px}.bh small{display:block;color:var(--mute)}
+  .bh .tot{text-align:right;font-weight:700;font-size:17px;letter-spacing:-.02em}
+  .cl{display:flex;justify-content:space-between;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line)}
+  .cl:last-child{border-bottom:0}
+  .cl b{font-weight:600}.cl small{display:block;color:var(--mute);font-size:12.5px}
+  .cl .s{text-align:right;font-weight:600;white-space:nowrap}
+  .mov{display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+  .mov:last-child{border-bottom:0}
+  .mov .ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:700;flex:none}
+  .mov .ic.g{background:var(--ok-s);color:var(--ok)}.mov .ic.r{background:var(--bad-s);color:var(--bad)}.mov .ic.n{background:var(--soft);color:var(--mute)}
+  .mov .tx{flex:1;min-width:0}
+  .mov .t{font-weight:600;overflow:hidden;text-overflow:ellipsis}
+  .mov .d{color:var(--mute);font-size:12.5px;word-break:break-word}
+  .mov .m{text-align:right;white-space:nowrap;font-weight:700}
+  .mov .m div{font-weight:400;font-size:12px;margin-top:2px}
+  .dia{display:grid;grid-template-columns:48px 1fr;gap:10px;align-items:center;margin:9px 0;font-size:12px;color:var(--mute)}
+  .barra{height:8px;border-radius:6px;margin:3px 0;min-width:3px}
+  .barra.i{background:linear-gradient(90deg,#0e9f6e,#35c995)}.barra.o{background:linear-gradient(90deg,#d9364c,#f0728a)}
+  .vacio{color:var(--mute);text-align:center;padding:26px 0}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{text-align:left;padding:9px 10px;color:var(--mute);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line);background:var(--soft);position:sticky;top:0}
+  td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;background:var(--soft);color:var(--ink2)}
+  .tag.w{background:#fff4dc;color:#93610a}.tag.r{background:var(--bad-s);color:var(--bad)}
+
+  /* ---------- formularios ---------- */
+  .f2{display:grid;gap:14px 16px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .fld label,.lab{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin:0 0 6px}
+  .fld label em{color:var(--bad);font-style:normal}
+  input,select{width:100%;height:44px;padding:0 13px;border:1.5px solid var(--line);border-radius:10px;font:inherit;color:var(--ink);background:var(--soft);outline:0;transition:border-color .15s,box-shadow .15s,background .15s}
+  input::placeholder{color:#a9b3c3}
+  input:hover,select:hover{border-color:#cfd7e4}
+  input:focus,select:focus{border-color:var(--pri);background:#fff;box-shadow:0 0 0 4px rgba(36,86,230,.12)}
+  select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%2344526a' stroke-width='2'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:34px}
+  input[type=file]{display:none}
+  input[type=checkbox]{width:18px;height:18px;accent-color:var(--pri)}
+  .pre{position:relative}.pre span{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--mute);font-weight:600;font-size:13px}
+  .pre input{padding-left:44px;font-weight:600}
+  .chips input,.chips select{width:auto;height:38px;background:#fff}
+  .sec{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:22px 0 12px;display:flex;align-items:center;gap:10px}
+  .sec:after{content:"";flex:1;height:1px;background:var(--line)}
+  .paso{width:24px;height:24px;border-radius:50%;background:var(--pri);color:#fff;display:inline-grid;place-items:center;font-size:12px;font-weight:700}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 20px;background:var(--pri);color:#fff;border:0;border-radius:10px;font:inherit;font-weight:600;cursor:pointer;transition:filter .15s,transform .05s}
+  .btn:hover{filter:brightness(1.08)}.btn:active{transform:translateY(1px)}
+  .btn.sec2{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+  .btn.sec2:hover{filter:none;border-color:#c5cfdf}
+  .btn.mini{height:32px;padding:0 12px;font-size:12.5px;border-radius:8px}
+  .btn.blk{width:100%}
+  .btn:disabled{opacity:.55;cursor:default}
+  .acc{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+  .seg{display:inline-flex;background:#e9edf4;border-radius:12px;padding:4px;margin-bottom:14px}
+  .seg button{border:0;background:none;padding:9px 18px;border-radius:9px;font:inherit;font-weight:600;color:var(--ink2);cursor:pointer}
+  .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(11,27,51,.14)}
+  .drop{display:block;border:2px dashed #c9d3e2;border-radius:var(--r);padding:26px 16px;text-align:center;background:var(--soft);cursor:pointer;transition:.15s}
+  .drop:hover,.drop.sobre{border-color:var(--pri);background:var(--pri-s)}
+  .drop svg{width:30px;height:30px;color:var(--pri)}
+  .drop b{display:block;margin-top:6px}.drop small{color:var(--mute)}
+  .nota{margin-top:10px;padding:10px 13px;border-radius:10px;background:var(--pri-s);color:#1c3f9c;font-size:13px}
+  #msg{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;max-width:92%;z-index:20;font-weight:500;box-shadow:0 12px 30px -8px rgba(0,0,0,.4)}
+  #msg.err{background:var(--bad)}
+
+  @media(max-width:860px){
+    .shell{display:block}
+    aside{position:fixed;bottom:0;left:0;right:0;top:auto;height:auto;padding:6px 8px;z-index:10;box-shadow:0 -6px 20px rgba(0,0,0,.18)}
+    aside .marca,.quien{display:none}
+    nav{flex-direction:row;justify-content:space-around}
+    nav button{flex-direction:column;gap:3px;font-size:10.5px;padding:7px 8px}
+    nav button.on{box-shadow:none}
+    .top{padding:16px 16px 4px}.top h1{font-size:19px}
+    main{padding:12px 16px 96px}
+    .hero b{font-size:27px}
+    #msg{bottom:84px}
+  }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="lbox">
+    <div class="marca"><div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></svg></div>Saldos Bancarios</div>
+    <h2>Bienvenido</h2>
+    <p>Ingrese con su usuario y PIN</p>
+    <div class="fld"><label>Usuario</label><input id="l_u" autocomplete="username" placeholder="usuario"></div>
+    <div class="fld" style="margin-top:14px"><label>PIN</label><input id="l_p" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••••"></div>
+    <button class="btn blk" style="margin-top:20px" id="l_b" onclick="entrar()">Ingresar</button>
+  </div>
+</div>
+
+<div id="app" class="shell oculto">
+  <aside>
+    <div class="marca"><div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></svg></div><div><span id="h_emp">Saldos Bancarios</span><small>Tesorería</small></div></div>
+    <nav id="nav"></nav>
+    <div class="quien"><b id="h_nom"></b><span id="h_rol"></span></div>
+  </aside>
+  <div class="cont">
+    <div class="top">
+      <div><h1 id="t_tit">Panel general</h1><p id="t_sub"></p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="btn sec2 mini" id="b_push" onclick="activarPush()">🔔 Activar avisos</button><button class="btn sec2 mini" onclick="cargar()">Actualizar</button><button class="btn sec2 mini" onclick="salir()">Salir</button></div>
+    </div>
+    <main>
+      <!-- RESUMEN -->
+      <section id="v-resumen">
+        <div class="grid" id="r_totales"></div>
+        <div class="chips" id="r_bancos" style="margin-top:16px"></div>
+        <div id="r_cuentas"></div>
+        <div class="chips" id="r_chips" style="margin-top:18px"></div>
+        <div class="grid" id="r_kpis"></div>
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));margin-top:14px">
+          <div class="card" style="margin:0"><h2>Ingresos y egresos por día</h2><div id="r_dias"></div></div>
+          <div class="card" style="margin:0"><h2>Últimos movimientos</h2><div id="r_ult"></div></div>
+        </div>
+        <div class="card" style="margin-top:14px"><h2>Resúmenes guardados</h2><div id="r_res" style="overflow-x:auto"></div></div>
+      </section>
+
+      <!-- MOVIMIENTOS -->
+      <section id="v-movs" class="oculto">
+        <div class="chips" id="m_bancos"></div>
+        <div class="chips">
+          <input type="date" id="m_desde" onchange="rango('x')"> <span style="color:var(--mute)">a</span> <input type="date" id="m_hasta" onchange="rango('x')">
+          <select id="m_cta" onchange="pintarMovs()"></select>
+          <select id="m_tipo" onchange="pintarMovs()"></select>
+          <input id="m_q" placeholder="Buscar nombre, concepto o referencia…" oninput="pintarMovs()" style="flex:1;min-width:180px">
+          <button class="btn sec2 mini oculto" id="m_res" onclick="generarResumen()">Generar y guardar resumen</button>
+        </div>
+        <div class="card"><div id="m_lista"></div></div>
+      </section>
+
+      <!-- CARGAR (ADMIN) -->
+      <section id="v-cargar" class="oculto">
+        <div class="card">
+          <h2><span class="paso">1</span> Banco de origen <small>los datos se cargan y agrupan por banco</small></h2>
+          <div class="chips" id="b_sel" style="margin:0"></div>
+        </div>
+        <div class="seg">
+          <button id="tab_ext" class="on" onclick="modoCarga('ext')">Extracto del banco</button>
+          <button id="tab_man" onclick="modoCarga('man')">Comprobante o carga manual</button>
+        </div>
+
+        <div id="p_ext" class="card">
+          <h2><span class="paso">2</span> Importar extracto <small>todos los movimientos + resumen</small></h2>
+          <label class="drop" id="x_drop">
+            <input type="file" id="x_file" accept="application/pdf,image/*">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg>
+            <b id="x_nom">Arrastre el PDF aquí o toque para elegir</b><small>Extracto "Movimientos de cuenta" · máx. 8 MB</small>
+          </label>
+          <div style="margin-top:12px"><button class="btn" id="x_leer" onclick="leerExtracto()">Leer extracto</button></div>
+          <div class="nota" id="x_info">Se muestra una vista previa antes de guardar.</div>
+          <div id="x_prev" class="oculto">
+            <div class="sec">Vista previa</div>
+            <div class="f2"><div class="fld"><label>Cuenta del extracto <em>*</em></label><select id="x_cuenta"></select></div></div>
+            <div class="grid" id="x_kpis" style="margin-top:14px"></div>
+            <div style="overflow:auto;max-height:360px;margin-top:14px;border:1px solid var(--line);border-radius:12px"><table id="x_tabla"></table></div>
+            <label style="display:flex;align-items:center;gap:10px;margin-top:14px;cursor:pointer"><input type="checkbox" id="x_ajustar" checked> Ajustar el saldo de la cuenta al saldo final del extracto</label>
+            <div class="acc"><button class="btn" id="x_guardar" onclick="guardarExtracto()">Guardar movimientos y resumen</button></div>
+          </div>
+        </div>
+
+        <div id="p_man" class="card oculto">
+          <h2><span class="paso">2</span> Movimiento individual <small>con o sin comprobante</small></h2>
+          <label class="drop" id="f_drop">
+            <input type="file" id="f_file" accept="application/pdf,image/*">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg>
+            <b id="f_nom">Arrastre el comprobante aquí o toque para elegir</b><small>PDF o foto de la transferencia / boleta de depósito (opcional)</small>
+          </label>
+          <div style="margin-top:12px"><button class="btn sec2" id="f_leer" onclick="leerComp()">Leer comprobante y completar</button></div>
+          <div class="nota" id="f_comp">El comprobante se guarda en Drive y completa el formulario.</div>
+
+          <div class="sec">Operación</div>
+          <div class="f2">
+            <div class="fld"><label>Cuenta <em>*</em></label><select id="f_cuenta_id"></select></div>
+            <div class="fld"><label>Tipo <em>*</em></label><select id="f_tipo"></select></div>
+            <div class="fld"><label>Monto <em>*</em></label><div class="pre"><span>Gs.</span><input id="f_monto" inputmode="decimal" placeholder="0"></div></div>
+            <div class="fld"><label>Fecha <em>*</em></label><input type="date" id="f_fecha"></div>
+            <div class="fld"><label>Hora</label><input type="time" id="f_hora"></div>
+          </div>
+          <div class="sec">Contraparte</div>
+          <div class="f2">
+            <div class="fld"><label>Nombre o razón social</label><input id="f_contraparte" placeholder="Quién deposita / a quién se transfiere"></div>
+            <div class="fld"><label>RUC / CI</label><input id="f_documento" placeholder="80000000-0"></div>
+            <div class="fld"><label>Banco de la contraparte</label><input id="f_entidad" list="l_bancos"></div>
+          </div>
+          <div class="sec">Detalle</div>
+          <div class="f2">
+            <div class="fld" style="grid-column:1/-1"><label>Concepto</label><input id="f_concepto" placeholder="Pago de facturas, depósito de ventas…"></div>
+            <div class="fld"><label>Referencia</label><input id="f_referencia"></div>
+            <div class="fld"><label>N° de operación</label><input id="f_nro_operacion"></div>
+            <div class="fld"><label>Firmante</label><input id="f_firmante"></div>
+          </div>
+          <div class="acc">
+            <button class="btn" id="f_guardar" onclick="guardarMov()">Guardar y notificar</button>
+            <button class="btn sec2" onclick="limpiarForm()">Limpiar</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- CUENTAS (ADMIN) -->
+      <section id="v-cuentas" class="oculto">
+        <div class="card"><h2>Cuentas registradas</h2><div style="overflow-x:auto"><table id="c_tabla"></table></div></div>
+        <div class="card">
+          <h2 id="c_tit">Nueva cuenta</h2><input type="hidden" id="c_id">
+          <div class="f2">
+            <div class="fld"><label>Banco <em>*</em></label><input id="c_banco" list="l_bancos" placeholder="Elija o escriba el banco"></div>
+            <div class="fld"><label>Tipo de cuenta</label><select id="c_tipo"><option>Cuenta Corriente</option><option>Caja de Ahorro</option><option>Ahorro Programado</option><option>CDA</option><option>Otra</option></select></div>
+            <div class="fld"><label>Número <em>*</em></label><input id="c_numero" placeholder="Como figura en el extracto"></div>
+            <div class="fld"><label>Moneda</label><select id="c_moneda"><option>GS</option><option>USD</option></select></div>
+            <div class="fld"><label>Denominación</label><input id="c_denominacion" placeholder="Titular de la cuenta"></div>
+            <div class="fld"><label>Saldo inicial</label><input id="c_saldo_inicial" inputmode="decimal" placeholder="0"></div>
+            <div class="fld"><label>Estado</label><select id="c_activo"><option value="SI">Activa</option><option value="NO">Inactiva</option></select></div>
+          </div>
+          <div class="acc"><button class="btn" onclick="guardarCta()">Guardar cuenta</button><button class="btn sec2" onclick="editarCta()">Nueva</button></div>
+        </div>
+      </section>
+
+      <!-- AJUSTES (ADMIN) -->
+      <section id="v-ajustes" class="oculto">
+        <div class="card">
+          <h2>Empresa y notificaciones</h2>
+          <div class="f2">
+            <div class="fld"><label>Nombre de la empresa</label><input id="g_EMPRESA"></div>
+            <div class="fld"><label>Correos que reciben avisos</label><input id="g_EMAILS" placeholder="uno@empresa.com, otro@empresa.com"></div>
+            <div class="fld"><label>Avisar en cada movimiento</label><select id="g_NOTIFICAR_CADA_MOVIMIENTO"><option value="SI">Sí</option><option value="NO">No</option></select></div>
+          </div>
+          <div class="sec">Telegram (opcional)</div>
+          <div class="f2">
+            <div class="fld"><label>Token del bot</label><input id="g_TELEGRAM_TOKEN"></div>
+            <div class="fld"><label>Chat ID</label><input id="g_TELEGRAM_CHAT_ID"></div>
+          </div>
+          <div class="sec">Notificaciones al celular (Vercel)</div>
+          <div class="f2">
+            <div class="fld"><label>Dirección del sitio en Vercel</label><input id="g_PUSH_URL" placeholder="https://mi-sitio.vercel.app"></div>
+            <div class="fld"><label>Clave secreta (igual a PUSH_SECRET en Vercel)</label><input id="g_PUSH_SECRET" type="password" autocomplete="off"></div>
+          </div>
+          <div class="acc"><button class="btn" onclick="guardarCfg()">Guardar ajustes</button><button class="btn sec2" onclick="probar()">Enviar prueba</button></div>
+        </div>
+        <div class="card"><h2>Usuarios</h2><div style="overflow-x:auto"><table id="u_tabla"></table></div>
+          <div class="sec">Agregar o editar</div>
+          <div class="f2">
+            <div class="fld"><label>Usuario <em>*</em></label><input id="u_usuario"></div>
+            <div class="fld"><label>Nombre <em>*</em></label><input id="u_nombre"></div>
+            <div class="fld"><label>Rol</label><select id="u_rol"><option value="PRESIDENTE">Presidencia (solo ver)</option><option value="ADMIN">Administrador</option></select></div>
+            <div class="fld"><label>PIN</label><input id="u_pin" type="password" inputmode="numeric" autocomplete="new-password" placeholder="Vacío = no cambiar"></div>
+            <div class="fld"><label>Correo</label><input id="u_email"></div>
+            <div class="fld"><label>Estado</label><select id="u_activo"><option value="SI">Activo</option><option value="NO">Inactivo</option></select></div>
+          </div>
+          <div class="acc"><button class="btn" onclick="guardarUsr()">Guardar usuario</button></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<datalist id="l_bancos">
+  <option>SUDAMERIS</option><option>ITAÚ</option><option>CONTINENTAL</option><option>BANCO GNB</option><option>BNF</option><option>ATLAS</option>
+  <option>FAMILIAR</option><option>BASA</option><option>UENO</option><option>BANCOP</option><option>INTERFISA</option><option>BANCO DO BRASIL</option>
+  <option>CITIBANK</option><option>ZETA BANCO</option><option>SOLAR BANCO</option>
+</datalist>
+<div id="msg" class="oculto"></div>
+
+<script>
+/* === URL de la aplicación web de Apps Script (termina en /exec) === */
+const API_URL = 'https://script.google.com/macros/s/AKfycbxJu64fBhkM72zEQSB93BpprfstH88F__jtY-e7_FMBjEKK9-5ezDdvOb7_MJYNcXjc/exec';
+
+const TIPOS = {DEPOSITO:'Depósito', TRANSFERENCIA_RECIBIDA:'Transferencia recibida', CREDITO:'Otro crédito', TRANSFERENCIA_ENVIADA:'Transferencia enviada', DEBITO:'Débito / gasto bancario', AJUSTE:'Ajuste de saldo'};
+const SIGNO = {DEPOSITO:1, TRANSFERENCIA_RECIBIDA:1, CREDITO:1, TRANSFERENCIA_ENVIADA:-1, DEBITO:-1, AJUSTE:1};
+const TITULOS = {resumen:'Panel general', movs:'Movimientos', cargar:'Cargar datos', cuentas:'Cuentas bancarias', ajustes:'Ajustes'};
+const ICONOS = {
+  resumen:'<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',
+  movs:'<path d="M7 4v16M7 20l-4-4M17 20V4M17 4l4 4"/>',
+  cargar:'<path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/>',
+  cuentas:'<path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>',
+  ajustes:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'
+};
+const COLOR_BANCO = {SUDAMERIS:'#e2001a', ITAU:'#ec7000', 'ITAÚ':'#ec7000', CONTINENTAL:'#0a4ea2', GNB:'#5b2a86', BNF:'#0b7a3b', FOMENTO:'#0b7a3b',
+  ATLAS:'#c8102e', FAMILIAR:'#00843d', BASA:'#003b71', UENO:'#16181d', VISION:'#f39200', BANCOP:'#00713d', INTERFISA:'#0061a8', BRASIL:'#f9c300', CITI:'#056dae'};
+const S = {token:null, rol:'', cuentas:[], movs:[], resumenes:[], ext:null, per:'mes', desde:'', hasta:'', comp:'', usuarios:[], banco:'', bancoCarga:''};
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const plata = (n, mon) => (mon === 'USD' ? 'US$ ' : 'Gs. ') + Number(n || 0).toLocaleString('es-PY', {maximumFractionDigits: mon === 'USD' ? 2 : 0});
+const num = v => Number(String(v || '').replace(/[^\d,-]/g, '').replace(',', '.')) || 0;
+const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+const fch = f => f ? f.slice(8, 10) + '/' + f.slice(5, 7) + '/' + f.slice(0, 4) : '';
+const cta = id => S.cuentas.find(c => c.id === id) || {moneda:'GS', banco:'?', numero:''};
+const guardar = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
+const leerLS = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const activas = () => S.cuentas.filter(c => c.activo !== 'NO');
+const bancos = () => [...new Set(activas().map(c => String(c.banco).trim().toUpperCase()))].sort();
+const bancoDe = c => String(c.banco).trim().toUpperCase();
+
+function colorBanco(n) {
+  const u = String(n).toUpperCase();
+  for (const k in COLOR_BANCO) if (u.includes(k)) return COLOR_BANCO[k];
+  let h = 0; for (const ch of u) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  return `hsl(${h} 55% 38%)`;
+}
+function avatar(n, chico) {
+  const s = String(n).toUpperCase().replace(/^BANCO\s+/, '').replace(/[^A-ZÁÉÍÓÚÑ ]/g, '').trim();
+  const p = s.split(/\s+/), ini = p.length > 1 ? p[0][0] + p[1][0] : s.slice(0, 2);
+  return `<div class="av${chico ? ' s' : ''}" style="background:${colorBanco(n)}">${esc(ini || '?')}</div>`;
+}
+function chipsBanco(sel, fn, todos) {
+  return (todos ? `<button class="chip ${sel ? '' : 'on'}" onclick="${fn}('')">Todos los bancos</button>` : '') +
+    bancos().map(b => `<button class="chip ${sel === b ? 'on' : ''}" onclick="${fn}('${esc(b)}')"><span class="pt" style="background:${colorBanco(b)}"></span>${esc(b)}</button>`).join('');
+}
+
+function aviso(t, err) {
+  const m = $('msg'); m.textContent = t; m.className = err ? 'err' : '';
+  clearTimeout(aviso.t); aviso.t = setTimeout(() => m.className = 'oculto', err ? 6000 : 3200);
+}
+const INTERNO = typeof google !== 'undefined' && google.script && google.script.run;
+function fallo(e) {
+  const t = String(e && e.message || e).replace(/^Error:\s*/, '');
+  if (/SESION_VENCIDA/.test(t)) { salir(true); aviso('La sesión venció. Ingrese de nuevo.', true); }
+  else if (/Failed to fetch|NetworkError|Load failed/i.test(t)) aviso('No se pudo conectar con el servidor. Revise la URL /exec y la conexión.', true);
+  else aviso(t, true);
+}
+function api(fn, ...args) {
+  if (INTERNO) {
+    return new Promise((ok, mal) => google.script.run
+      .withSuccessHandler(ok)
+      .withFailureHandler(e => { fallo(e); mal(e); })[fn](...args));
+  }
+  // text/plain evita la verificación previa (preflight) que Apps Script no responde
+  return fetch(API_URL, {
+    method: 'POST', redirect: 'follow',
+    headers: {'Content-Type': 'text/plain;charset=utf-8'},
+    body: JSON.stringify({fn: fn, args: args})
+  }).then(r => r.json()).then(r => {
+    if (!r.ok) throw new Error(r.error);
+    return r.data;
+  }).catch(e => { fallo(e); throw e; });
+}
+
+/* ---------- sesión ---------- */
+async function entrar() {
+  $('l_b').disabled = true; $('l_b').textContent = 'Ingresando…';
+  try {
+    const r = await api('login', $('l_u').value, $('l_p').value);
+    guardar('sb_ses', JSON.stringify(r)); $('l_p').value = '';
+    iniciar(r);
+  } catch (e) {} finally { $('l_b').disabled = false; $('l_b').textContent = 'Ingresar'; }
+}
+function salir(silencioso) {
+  const t = S.token;
+  S.token = null; guardar('sb_ses', null);
+  if (t && !silencioso) api('logout', t).catch(() => {});
+  $('app').classList.add('oculto'); $('login').classList.remove('oculto');
+}
+function iniciar(r) {
+  S.token = r.token; S.rol = r.rol;
+  $('h_emp').textContent = r.empresa || 'Saldos Bancarios';
+  $('h_nom').textContent = r.nombre; $('h_rol').textContent = r.rol === 'ADMIN' ? 'Administrador' : 'Presidencia';
+  const tabs = [['resumen', 'Resumen'], ['movs', 'Movimientos']];
+  if (r.rol === 'ADMIN') tabs.push(['cargar', 'Cargar'], ['cuentas', 'Cuentas'], ['ajustes', 'Ajustes']);
+  $('nav').innerHTML = tabs.map(t => `<button data-v="${t[0]}" onclick="ver('${t[0]}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONOS[t[0]]}</svg>${t[1]}</button>`).join('');
+  $('login').classList.add('oculto'); $('app').classList.remove('oculto');
+  $('f_tipo').innerHTML = Object.keys(TIPOS).filter(k => k !== 'AJUSTE').map(k => `<option value="${k}">${TIPOS[k]}</option>`).join('');
+  $('m_tipo').innerHTML = '<option value="">Todos los tipos</option>' + Object.keys(TIPOS).map(k => `<option value="${k}">${TIPOS[k]}</option>`).join('');
+  $('m_res').classList.toggle('oculto', r.rol !== 'ADMIN');
+  limpiarForm(); ver('resumen'); rango('mes');
+  if (r.rol === 'ADMIN') cargarAdmin();
+}
+function ver(v) {
+  document.querySelectorAll('main section').forEach(s => s.classList.toggle('oculto', s.id !== 'v-' + v));
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  $('t_tit').textContent = TITULOS[v];
+  $('t_sub').textContent = new Date().toLocaleDateString('es-PY', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+  window.scrollTo(0, 0);
+}
+
+/* ---------- datos ---------- */
+function rango(p) {
+  const h = new Date();
+  if (p === 'hoy') { S.desde = S.hasta = iso(h); }
+  else if (p === '7') { S.desde = iso(new Date(h.getTime() - 6 * 864e5)); S.hasta = iso(h); }
+  else if (p === 'mes') { S.desde = iso(new Date(h.getFullYear(), h.getMonth(), 1)); S.hasta = iso(h); }
+  else if (p === 'todo') { S.desde = ''; S.hasta = ''; }
+  else { S.desde = $('m_desde').value; S.hasta = $('m_hasta').value; }
+  S.per = p; $('m_desde').value = S.desde; $('m_hasta').value = S.hasta;
+  cargar();
+}
+async function cargar() {
+  try {
+    const d = await api('getDatos', S.token, S.desde, S.hasta);
+    S.cuentas = d.cuentas; S.movs = d.movs; S.resumenes = d.resumenes || [];
+    pintarTodo();
+  } catch (e) {}
+}
+function pintarTodo() { pintarResumen(); pintarMovs(); pintarCuentas(); }
+function filtrarBanco(b) { S.banco = b; $('m_cta').value = ''; pintarResumen(); pintarMovs(); }
+const valor = m => SIGNO[m.tipo] * m.monto;
+
+function filaMov(m) {
+  const c = cta(m.cuenta_id), v = valor(m), aj = m.tipo === 'AJUSTE';
+  const det = [fch(m.fecha) + (m.hora ? ' ' + m.hora : ''), c.banco + ' ' + c.numero, m.concepto, m.entidad, m.referencia && 'Ref. ' + m.referencia].filter(Boolean).map(esc).join(' · ');
+  return `<div class="mov"><div class="ic ${aj ? 'n' : v >= 0 ? 'g' : 'r'}">${aj ? '≈' : v >= 0 ? '↓' : '↑'}</div>
+    <div class="tx"><div class="t">${esc(m.contraparte || TIPOS[m.tipo] || m.tipo)}</div><div class="d">${m.contraparte ? esc(TIPOS[m.tipo]) + ' · ' : ''}${det}</div></div>
+    <div class="m num ${v >= 0 ? 'in' : 'out'}">${v >= 0 ? '+' : '−'} ${plata(Math.abs(v), c.moneda)}<div>
+    ${/^https:\/\//.test(m.comprobante_url) ? `<a href="${esc(m.comprobante_url)}" target="_blank" rel="noopener">comprobante</a> ` : ''}
+    ${S.rol === 'ADMIN' ? `<button class="btn sec2 mini" style="height:24px;padding:0 8px;font-size:11.5px" onclick="anular('${esc(m.id)}')">Anular</button>` : ''}</div></div></div>`;
+}
+
+function pintarResumen() {
+  const bs = bancos();
+  if (S.banco && !bs.includes(S.banco)) S.banco = '';
+  const ctas = activas().filter(c => !S.banco || bancoDe(c) === S.banco);
+  const ids = new Set(ctas.map(c => c.id));
+  const movsB = S.movs.filter(m => ids.has(m.cuenta_id));
+  const monedas = [...new Set(ctas.map(c => c.moneda))];
+
+  $('r_totales').innerHTML = monedas.map(mon => {
+    const l = ctas.filter(c => c.moneda === mon);
+    return `<div class="card hero" style="margin:0"><span>Saldo ${S.banco ? 'en ' + esc(S.banco) : 'total'} · ${mon === 'USD' ? 'dólares' : 'guaraníes'}</span><b class="num">${plata(l.reduce((a, c) => a + c.saldo, 0), mon)}</b>
+      <em>${new Set(l.map(bancoDe)).size} banco(s) · ${l.length} cuenta(s)</em></div>`;
+  }).join('') || '<div class="card vacio" style="margin:0">Todavía no hay cuentas cargadas.</div>';
+
+  $('r_bancos').innerHTML = bs.length > 1 ? chipsBanco(S.banco, 'filtrarBanco', true) : '';
+  $('r_cuentas').innerHTML = (S.banco ? [S.banco] : bs).map(b => {
+    const l = ctas.filter(c => bancoDe(c) === b);
+    const tot = [...new Set(l.map(c => c.moneda))].map(mon => plata(l.filter(c => c.moneda === mon).reduce((a, c) => a + c.saldo, 0), mon)).join('<br>');
+    return `<div class="card banco"><div class="bh">${avatar(b)}<div class="n"><b>${esc(b)}</b><small>${l.length} cuenta(s)</small></div><div class="tot num">${tot}</div></div>` +
+      l.map(c => { const u = S.movs.find(m => m.cuenta_id === c.id);
+        return `<div class="cl"><div><b>${esc(c.tipo || 'Cuenta')} · ${esc(c.numero)}</b><small>${esc(c.denominacion)}${u ? ' · últ. mov. ' + fch(u.fecha) : ''}</small></div><div class="s num">${plata(c.saldo, c.moneda)}</div></div>`; }).join('') + '</div>';
+  }).join('');
+
+  $('r_chips').innerHTML = [['hoy', 'Hoy'], ['7', '7 días'], ['mes', 'Este mes'], ['todo', 'Todo']]
+    .map(p => `<button class="chip ${S.per === p[0] ? 'on' : ''}" onclick="rango('${p[0]}')">${p[1]}</button>`).join('');
+
+  const movs = movsB.filter(m => m.tipo !== 'AJUSTE');
+  const suma = (mon, tipo) => movs.filter(m => m.tipo === tipo && cta(m.cuenta_id).moneda === mon).reduce((a, m) => a + m.monto, 0);
+  const k = (cl, ic, t, v, mon) => `<div class="card kpi"><i class="${cl}">${ic}</i><div><span>${t}</span><b class="num">${plata(v, mon)}</b></div></div>`;
+  $('r_kpis').innerHTML = monedas.map(mon =>
+    k('g', '↓', 'Depositado', suma(mon, 'DEPOSITO'), mon) + k('g', '↓', 'Transf. recibidas', suma(mon, 'TRANSFERENCIA_RECIBIDA'), mon) +
+    k('b', '+', 'Otros créditos', suma(mon, 'CREDITO'), mon) + k('r', '↑', 'Transf. realizadas', suma(mon, 'TRANSFERENCIA_ENVIADA'), mon) +
+    k('r', '−', 'Débitos y gastos', suma(mon, 'DEBITO'), mon)).join('');
+
+  const mon0 = monedas.includes('GS') ? 'GS' : monedas[0], dias = {};
+  movs.filter(m => cta(m.cuenta_id).moneda === mon0).forEach(m => {
+    const d = dias[m.fecha] = dias[m.fecha] || {i: 0, o: 0};
+    SIGNO[m.tipo] > 0 ? d.i += m.monto : d.o += m.monto;
+  });
+  const fs = Object.keys(dias).sort().reverse().slice(0, 10), max = Math.max(1, ...fs.map(f => Math.max(dias[f].i, dias[f].o)));
+  $('r_dias').innerHTML = fs.map(f => `<div class="dia"><div>${f.slice(8, 10)}/${f.slice(5, 7)}</div><div>
+      <div class="barra i" style="width:${dias[f].i / max * 100}%"></div><div class="barra o" style="width:${dias[f].o / max * 100}%"></div>
+      <span class="in num">+${plata(dias[f].i, mon0)}</span> &nbsp; <span class="out num">−${plata(dias[f].o, mon0)}</span></div></div>`).join('')
+    || '<div class="vacio">Sin movimientos en el período.</div>';
+  $('r_ult').innerHTML = movsB.slice(0, 6).map(filaMov).join('') || '<div class="vacio">Sin movimientos en el período.</div>';
+
+  const res = S.resumenes.filter(r => !S.banco || bancoDe(cta(r.cuenta_id)) === S.banco);
+  $('r_res').innerHTML = res.length ? '<table><tr><th>Banco / cuenta</th><th>Período</th><th>Saldo anterior</th><th>Ingresos</th><th>Egresos</th><th>Saldo final</th><th></th></tr>' +
+    res.map(r => { const c = cta(r.cuenta_id); return `<tr title="${esc(r.detalle)}"><td><b>${esc(c.banco)}</b><br><small style="color:var(--mute)">${esc(c.numero)}</small></td><td>${fch(r.desde)} a ${fch(r.hasta)}<br><span class="tag">${r.movimientos} mov. · ${r.origen === 'EXTRACTO' ? 'extracto' : 'sistema'}</span></td>
+      <td class="num">${plata(r.saldo_anterior, c.moneda)}</td><td class="in num">+ ${plata(r.ingresos, c.moneda)}</td><td class="out num">− ${plata(r.egresos, c.moneda)}</td><td class="num"><b>${plata(r.saldo_final, c.moneda)}</b></td>
+      <td>${/^https:\/\//.test(r.archivo_url) ? `<a href="${esc(r.archivo_url)}" target="_blank" rel="noopener">PDF</a>` : ''}</td></tr>`; }).join('') + '</table>'
+    : '<div class="vacio">Todavía no hay resúmenes guardados.</div>';
+}
+
+function pintarMovs() {
+  $('m_bancos').innerHTML = bancos().length > 1 ? chipsBanco(S.banco, 'filtrarBanco', true) : '';
+  const ctas = S.cuentas.filter(c => !S.banco || bancoDe(c) === S.banco), ids = new Set(ctas.map(c => c.id));
+  const sel = $('m_cta').value;
+  $('m_cta').innerHTML = '<option value="">Todas las cuentas</option>' + ctas.map(c => `<option value="${esc(c.id)}">${esc(c.banco)} ${esc(c.numero)}</option>`).join('');
+  $('m_cta').value = ids.has(sel) ? sel : '';
+  const s2 = $('m_cta').value, q = $('m_q').value.toLowerCase(), t = $('m_tipo').value;
+  const l = S.movs.filter(m => ids.has(m.cuenta_id) && (!s2 || m.cuenta_id === s2) && (!t || m.tipo === t) &&
+    (!q || [m.contraparte, m.concepto, m.referencia, m.nro_operacion, m.entidad, m.documento].join(' ').toLowerCase().includes(q)));
+  $('m_lista').innerHTML = l.map(filaMov).join('') || '<div class="vacio">Sin movimientos para este filtro.</div>';
+}
+
+/* ---------- admin: carga ---------- */
+const CAMPOS = ['cuenta_id', 'tipo', 'fecha', 'hora', 'monto', 'contraparte', 'documento', 'entidad', 'referencia', 'nro_operacion', 'firmante', 'concepto'];
+function modoCarga(m) {
+  $('p_ext').classList.toggle('oculto', m !== 'ext'); $('p_man').classList.toggle('oculto', m !== 'man');
+  $('tab_ext').classList.toggle('on', m === 'ext'); $('tab_man').classList.toggle('on', m === 'man');
+}
+function bancoCarga(b) { S.bancoCarga = b; llenarCuentasCarga(); }
+function llenarCuentasCarga() {
+  const bs = bancos();
+  if (!bs.includes(S.bancoCarga)) S.bancoCarga = bs[0] || '';
+  $('b_sel').innerHTML = chipsBanco(S.bancoCarga, 'bancoCarga', false) || '<span style="color:var(--mute)">Primero registre una cuenta en la pestaña Cuentas.</span>';
+  const ops = '<option value="">— Seleccione —</option>' + activas().filter(c => bancoDe(c) === S.bancoCarga)
+    .map(c => `<option value="${esc(c.id)}">${esc(c.tipo || 'Cuenta')} ${esc(c.numero)} (${esc(c.moneda)})</option>`).join('');
+  ['f_cuenta_id', 'x_cuenta'].forEach(id => {
+    const el = $(id), sel = el.value; el.innerHTML = ops; el.value = sel;
+    if (!el.value && el.options.length === 2) el.selectedIndex = 1; // una sola cuenta en el banco: queda elegida
+  });
+}
+function irACuenta(id) { // si el archivo leído es de otro banco, se cambia el banco seleccionado
+  const c = S.cuentas.find(x => x.id === id);
+  if (c && bancoDe(c) !== S.bancoCarga) { S.bancoCarga = bancoDe(c); llenarCuentasCarga(); }
+}
+function limpiarForm() {
+  CAMPOS.forEach(k => { if (k !== 'cuenta_id' && k !== 'tipo') $('f_' + k).value = ''; });
+  $('f_fecha').value = iso(new Date()); $('f_file').value = ''; S.comp = '';
+  $('f_nom').textContent = 'Arrastre el comprobante aquí o toque para elegir';
+  $('f_comp').textContent = 'El comprobante se guarda en Drive y completa el formulario.';
+}
+function archivo64(input) {
+  return new Promise((ok, mal) => {
+    const f = input.files[0];
+    if (!f) { aviso('Elija primero el archivo', true); return mal(); }
+    if (f.size > 8 * 1024 * 1024) { aviso('El archivo supera los 8 MB', true); return mal(); }
+    const r = new FileReader();
+    r.onload = () => ok({nombre: f.name, tipo: f.type, base64: r.result.split(',')[1]});
+    r.readAsDataURL(f);
+  });
+}
+async function leerComp() {
+  let a; try { a = await archivo64($('f_file')); } catch (e) { return; }
+  $('f_leer').disabled = true; $('f_comp').textContent = 'Leyendo comprobante…';
+  try {
+    const out = await api('leerComprobante', S.token, a);
+    S.comp = out.url;
+    const d = out.datos || {};
+    if (d.cuenta_id) irACuenta(d.cuenta_id);
+    CAMPOS.forEach(k => { if (d[k] != null && d[k] !== '') $('f_' + k).value = k === 'monto' ? Number(d[k]).toLocaleString('es-PY') : d[k]; });
+    $('f_comp').textContent = out.aviso || ('Comprobante guardado. Revise los datos antes de guardar.' + (d.cuenta_id ? '' : ' No se reconoció la cuenta: selecciónela.'));
+  } catch (e) { $('f_comp').textContent = 'No se pudo leer el comprobante.'; }
+  $('f_leer').disabled = false;
+}
+async function guardarMov() {
+  const m = {comprobante_url: S.comp};
+  CAMPOS.forEach(k => m[k] = $('f_' + k).value.trim());
+  m.monto = num(m.monto);
+  if (!m.cuenta_id) return aviso('Seleccione la cuenta', true);
+  if (!(m.monto > 0)) return aviso('Ingrese el monto', true);
+  $('f_guardar').disabled = true;
+  try {
+    const r = await api('guardarMovimiento', S.token, m);
+    aviso('Movimiento guardado. Saldo: ' + plata(r.saldo, cta(m.cuenta_id).moneda));
+    limpiarForm(); cargar();
+  } catch (e) {} finally { $('f_guardar').disabled = false; }
+}
+async function anular(id) {
+  if (!confirm('¿Anular este movimiento? El saldo se recalcula.')) return;
+  try { await api('anularMovimiento', S.token, id); aviso('Movimiento anulado'); cargar(); } catch (e) {}
+}
+async function leerExtracto() {
+  let a; try { a = await archivo64($('x_file')); } catch (e) { return; }
+  $('x_leer').disabled = true; $('x_info').textContent = 'Leyendo extracto…';
+  try {
+    const x = S.ext = await api('leerExtracto', S.token, a);
+    if (x.cuenta_id) { irACuenta(x.cuenta_id); $('x_cuenta').value = x.cuenta_id; }
+    const mon = cta(x.cuenta_id || $('x_cuenta').value).moneda, dups = x.movs.filter(m => m.dup).length, raros = x.movs.filter(m => !m.ok).length;
+    const k = (t, v, cl) => `<div class="card kpi"><div><span>${t}</span><b class="num ${cl}">${v}</b></div></div>`;
+    $('x_kpis').innerHTML = k('Saldo anterior', plata(x.saldo_anterior, mon), '') + k('Ingresos', '+ ' + plata(x.ingresos, mon), 'in') +
+      k('Egresos', '− ' + plata(x.egresos, mon), 'out') + k('Saldo final', plata(x.saldo_final, mon), '');
+    $('x_tabla').innerHTML = '<tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Importe</th><th>Saldo</th><th></th></tr>' + x.movs.map(m => {
+      const s = SIGNO[m.tipo];
+      return `<tr><td>${fch(m.fecha)}</td><td>${esc(TIPOS[m.tipo])}</td><td>${esc(m.concepto)}${m.referencia ? '<br><small style="color:var(--mute)">Ref. ' + esc(m.referencia) + '</small>' : ''}</td>
+        <td class="num ${s > 0 ? 'in' : 'out'}" style="white-space:nowrap">${s > 0 ? '+' : '−'} ${plata(m.monto, mon)}</td><td class="num" style="white-space:nowrap">${plata(m.saldo, mon)}</td>
+        <td>${m.dup ? '<span class="tag w">ya cargado</span>' : ''}${m.ok ? '' : ' <span class="tag r">revisar</span>'}</td></tr>`;
+    }).join('');
+    $('x_prev').classList.remove('oculto');
+    $('x_info').textContent = `Cuenta ${x.numero || '?'} · ${fch(x.desde)} a ${fch(x.hasta)} · ${x.movs.length} movimientos leídos` +
+      (dups ? `, ${dups} ya estaban cargados y no se duplican` : '') + (raros ? `. ATENCIÓN: ${raros} fila(s) no cierran con el saldo, revise antes de guardar` : '') + '.';
+  } catch (e) { S.ext = null; $('x_prev').classList.add('oculto'); $('x_info').textContent = 'No se pudo leer el extracto.'; }
+  $('x_leer').disabled = false;
+}
+async function guardarExtracto() {
+  const x = S.ext, id = $('x_cuenta').value;
+  if (!x) return;
+  if (!id) return aviso('Seleccione la cuenta del extracto', true);
+  $('x_guardar').disabled = true;
+  try {
+    const r = await api('guardarExtracto', S.token, {cuenta_id: id, url: x.url, movs: x.movs, desde: x.desde, hasta: x.hasta,
+      saldo_anterior: x.saldo_anterior, saldo_final: x.saldo_final, ajustar: $('x_ajustar').checked});
+    aviso(`Guardados ${r.insertados} movimientos (${r.duplicados} repetidos omitidos). Resumen guardado.`);
+    S.ext = null; $('x_prev').classList.add('oculto'); $('x_file').value = '';
+    $('x_nom').textContent = 'Arrastre el PDF aquí o toque para elegir';
+    $('x_info').textContent = 'Extracto guardado. Saldo de la cuenta: ' + plata(r.saldo, cta(id).moneda);
+    cargar();
+  } catch (e) {} finally { $('x_guardar').disabled = false; }
+}
+async function generarResumen() {
+  const id = $('m_cta').value;
+  if (!id) return aviso('Elija una cuenta en el filtro para generar su resumen', true);
+  try {
+    const r = await api('generarResumen', S.token, id, S.desde, S.hasta);
+    aviso('Resumen guardado. Saldo final: ' + plata(r.saldo_final, cta(id).moneda)); cargar();
+  } catch (e) {}
+}
+function zona(dropId, fileId, nomId) { // arrastrar y soltar + mostrar el nombre del archivo
+  const d = $(dropId), f = $(fileId);
+  const nombre = () => { if (f.files[0]) $(nomId).textContent = f.files[0].name; };
+  f.addEventListener('change', nombre);
+  ['dragenter', 'dragover'].forEach(ev => d.addEventListener(ev, e => { e.preventDefault(); d.classList.add('sobre'); }));
+  ['dragleave', 'drop'].forEach(ev => d.addEventListener(ev, e => { e.preventDefault(); d.classList.remove('sobre'); }));
+  d.addEventListener('drop', e => { if (e.dataTransfer.files.length) { f.files = e.dataTransfer.files; nombre(); } });
+}
+
+/* ---------- admin: cuentas ---------- */
+function pintarCuentas() {
+  if (S.rol !== 'ADMIN') return;
+  llenarCuentasCarga();
+  const orden = S.cuentas.slice().sort((a, b) => bancoDe(a).localeCompare(bancoDe(b)));
+  $('c_tabla').innerHTML = '<tr><th>Banco</th><th>Cuenta</th><th>Moneda</th><th>Saldo</th><th></th></tr>' + orden.map(c =>
+    `<tr><td><div style="display:flex;align-items:center;gap:9px">${avatar(c.banco, true)}<b>${esc(c.banco)}</b></div></td>
+     <td>${esc(c.tipo)} ${esc(c.numero)}<br><small style="color:var(--mute)">${esc(c.denominacion)}</small>${c.activo === 'NO' ? ' <span class="tag">inactiva</span>' : ''}</td>
+     <td>${esc(c.moneda)}</td><td class="num"><b>${plata(c.saldo, c.moneda)}</b></td>
+     <td style="white-space:nowrap"><button class="btn sec2 mini" onclick="editarCta('${esc(c.id)}')">Editar</button> <button class="btn sec2 mini" onclick="ajustar('${esc(c.id)}')">Ajustar saldo</button></td></tr>`).join('');
+}
+function editarCta(id) {
+  const c = S.cuentas.find(x => x.id === id) || {moneda: 'GS', activo: 'SI', tipo: 'Cuenta Corriente'};
+  if (c.tipo && ![...$('c_tipo').options].some(o => o.value === c.tipo)) $('c_tipo').add(new Option(c.tipo, c.tipo));
+  ['id', 'banco', 'tipo', 'numero', 'moneda', 'denominacion', 'saldo_inicial', 'activo'].forEach(k => $('c_' + k).value = c[k] == null ? '' : c[k]);
+  $('c_tit').textContent = id ? 'Editar cuenta' : 'Nueva cuenta';
+  if (id) $('c_banco').scrollIntoView({behavior: 'smooth', block: 'center'});
+}
+async function guardarCta() {
+  const c = {};
+  ['id', 'banco', 'tipo', 'numero', 'moneda', 'denominacion', 'saldo_inicial', 'activo'].forEach(k => c[k] = $('c_' + k).value.trim());
+  c.banco = c.banco.toUpperCase(); c.saldo_inicial = num(c.saldo_inicial);
+  try { await api('guardarCuenta', S.token, c); aviso('Cuenta guardada'); editarCta(); cargar(); } catch (e) {}
+}
+async function ajustar(id) {
+  const c = cta(id), v = prompt('Saldo real que muestra el banco para ' + c.banco + ' ' + c.numero + ':', Math.round(c.saldo));
+  if (v === null) return;
+  try { await api('ajustarSaldo', S.token, id, num(v)); aviso('Saldo ajustado'); cargar(); } catch (e) {}
+}
+
+/* ---------- admin: ajustes ---------- */
+const CFG = ['EMPRESA', 'EMAILS', 'NOTIFICAR_CADA_MOVIMIENTO', 'TELEGRAM_TOKEN', 'TELEGRAM_CHAT_ID', 'PUSH_URL', 'PUSH_SECRET'];
+async function cargarAdmin() {
+  try {
+    const a = await api('getAdmin', S.token);
+    CFG.forEach(k => $('g_' + k).value = a.config[k] || (k === 'NOTIFICAR_CADA_MOVIMIENTO' ? 'SI' : ''));
+    S.usuarios = a.usuarios;
+    $('u_tabla').innerHTML = '<tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Estado</th><th></th></tr>' + a.usuarios.map((u, i) =>
+      `<tr><td><b>${esc(u.usuario)}</b></td><td>${esc(u.nombre)}</td><td><span class="tag">${u.rol === 'ADMIN' ? 'Administrador' : 'Presidencia'}</span></td><td>${u.activo === 'NO' ? 'Inactivo' : 'Activo'}</td><td><button class="btn sec2 mini" onclick="editarUsr(${i})">Editar</button></td></tr>`).join('');
+  } catch (e) {}
+}
+function editarUsr(i) {
+  const u = S.usuarios[i];
+  ['usuario', 'nombre', 'rol', 'email', 'activo'].forEach(k => $('u_' + k).value = u[k] || ''); $('u_pin').value = '';
+}
+async function guardarUsr() {
+  const u = {};
+  ['usuario', 'nombre', 'rol', 'pin', 'email', 'activo'].forEach(k => u[k] = $('u_' + k).value.trim());
+  try {
+    await api('guardarUsuario', S.token, u); aviso('Usuario guardado');
+    ['usuario', 'nombre', 'pin', 'email'].forEach(k => $('u_' + k).value = ''); cargarAdmin();
+  } catch (e) {}
+}
+async function guardarCfg() {
+  const o = {}; CFG.forEach(k => o[k] = $('g_' + k).value);
+  try { await api('guardarConfig', S.token, o); aviso('Ajustes guardados'); $('h_emp').textContent = o.EMPRESA || 'Saldos Bancarios'; } catch (e) {}
+}
+async function probar() { try { await api('probarNotificacion', S.token); aviso('Prueba enviada'); } catch (e) {} }
+
+/* ---------- notificaciones push (celular) ---------- */
+const PUSH_OK = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && location.protocol === 'https:';
+function claveVapid(b64) {
+  const s = atob((b64 + '='.repeat((4 - b64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(s, ch => ch.charCodeAt(0));
+}
+async function activarPush() {
+  if (!PUSH_OK) return aviso('Este navegador no admite avisos aquí. En iPhone: Compartir > Agregar a inicio, y abrir la app desde ese ícono.', true);
+  try {
+    if (await Notification.requestPermission() !== 'granted') return aviso('No se dio permiso para notificaciones. Habilítelo en los ajustes del navegador.', true);
+    const reg = await navigator.serviceWorker.ready;
+    const cfg = await fetch('/api/push').then(r => r.json());
+    if (!cfg.publicKey) return aviso('Falta configurar VAPID_PUBLIC_KEY en Vercel', true);
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: claveVapid(cfg.publicKey)});
+    await api('guardarSuscripcion', S.token, sub.toJSON(), navigator.userAgent);
+    $('b_push').textContent = '🔔 Avisos activados';
+    aviso('Listo: este dispositivo va a recibir las notificaciones');
+  } catch (e) { if (e && e.name) aviso('No se pudo activar: ' + e.message, true); }
+}
+if (PUSH_OK) {
+  navigator.serviceWorker.register('/sw.js').then(() => navigator.serviceWorker.ready)
+    .then(reg => reg.pushManager.getSubscription())
+    .then(sub => { if (sub && Notification.permission === 'granted') $('b_push').textContent = '🔔 Avisos activados'; })
+    .catch(() => {});
+}
+
+/* ---------- arranque ---------- */
+zona('x_drop', 'x_file', 'x_nom'); zona('f_drop', 'f_file', 'f_nom');
+$('l_p').addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
+$('f_monto').addEventListener('blur', e => { const n = num(e.target.value); e.target.value = n ? n.toLocaleString('es-PY') : ''; });
+(function () { try { const r = JSON.parse(leerLS('sb_ses')); if (r && r.token) iniciar(r); } catch (e) {} })();
+</script>
+</body>
+</html>

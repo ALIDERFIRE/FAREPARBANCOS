@@ -1,0 +1,6 @@
+{
+  "name": "saldos-bancarios",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": { "web-push": "^3.6.7" }
+}

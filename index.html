@@ -401,6 +401,44 @@
   }
   #msg.err{background:linear-gradient(135deg,#7f1d1d,#dc2626)}
 
+  /* ---------- REPORTE ---------- */
+  .rp-head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:16px;border-bottom:2px solid var(--ink);margin-bottom:18px}
+  .rp-head h2{margin:0;font-size:20px;letter-spacing:-.02em}
+  .rp-head p{margin:2px 0 0;color:var(--ink2);font-size:13px}
+  .rp-head .emp{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--pri)}
+  .rp-meta{text-align:right;font-size:12.5px;color:var(--ink2)}
+  .rp-cta{margin-top:22px;break-inside:auto}
+  .rp-cta h3{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:15.5px}
+  .rp-cta h3 small{font-weight:400;color:var(--mute);font-size:12.5px}
+  .rp-k{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:12px}
+  .rp-k div{padding:11px 14px;border-right:1px solid var(--line)}
+  .rp-k div:last-child{border-right:0}
+  .rp-k span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}
+  .rp-k b{font-size:15px}
+  .rp-t{font-size:12.5px}
+  .rp-t td{padding:7px 9px;vertical-align:top}
+  .rp-t th{padding:8px 9px;position:static}
+  .rp-t td.r,.rp-t th.r{text-align:right;white-space:nowrap}
+  .rp-t tfoot td{font-weight:700;border-top:2px solid var(--line);background:var(--soft)}
+  .rp-t tr.aj td{color:var(--ink2);font-style:italic}
+  .rp-d{color:var(--mute);font-size:11.5px}
+  .rp-tipos{margin-top:10px;max-width:520px}
+  .rp-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+  @page{size:A4;margin:12mm}
+  @media print{
+    body{background:#fff;font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    aside,.top,#msg,.rp-no-print,main>section:not(#v-reporte){display:none!important}
+    .shell{display:block}
+    main{padding:0!important;max-width:none}
+    #rp_doc{border:0;box-shadow:none;padding:0;margin:0}
+    .rp-wrap{overflow:visible;border:0}
+    .rp-t thead{display:table-header-group}
+    .rp-t tr{break-inside:avoid}
+    .rp-cta h3,.rp-k{break-after:avoid}
+    tbody tr:hover,tr:hover td{background:none}
+  }
+  @media(max-width:860px){.rp-k{grid-template-columns:repeat(2,1fr)}.rp-k div:nth-child(2){border-right:0}.rp-k div:nth-child(-n+2){border-bottom:1px solid var(--line)}.rp-meta{text-align:left}}
+
   /* ---------- RESPONSIVE ---------- */
   @media(max-width:860px){
     .shell{display:block}
@@ -476,6 +514,31 @@
           <button class="btn sec2 mini oculto" id="m_res" onclick="generarResumen()">Generar y guardar resumen</button>
         </div>
         <div class="card"><div id="m_lista"></div></div>
+      </section>
+
+      <!-- REPORTES -->
+      <section id="v-reporte" class="oculto">
+        <div class="card rp-no-print">
+          <h2>Reporte de movimientos <small>por banco, cuenta y período</small></h2>
+          <div class="chips" id="rp_bancos" style="margin:0 0 14px"></div>
+          <div class="f2">
+            <div class="fld"><label>Cuenta</label><select id="rp_cta"></select></div>
+            <div class="fld"><label>Desde <em>*</em></label><input type="date" id="rp_desde"></div>
+            <div class="fld"><label>Hasta <em>*</em></label><input type="date" id="rp_hasta"></div>
+            <div class="fld"><label>Tipo de movimiento</label><select id="rp_tipo"></select></div>
+          </div>
+          <div class="chips" style="margin:14px 0 0">
+            <button class="chip" onclick="rpRango('mes')">Este mes</button>
+            <button class="chip" onclick="rpRango('ant')">Mes anterior</button>
+            <button class="chip" onclick="rpRango('anio')">Este año</button>
+          </div>
+          <div class="acc">
+            <button class="btn" id="rp_gen" onclick="generarReporte()">Generar reporte</button>
+            <button class="btn sec2" id="rp_imp" onclick="imprimirReporte()" disabled>Imprimir / PDF</button>
+            <button class="btn sec2" id="rp_xls" onclick="exportarReporte()" disabled>Descargar Excel</button>
+          </div>
+        </div>
+        <div class="card" id="rp_doc"><div class="vacio">Elija el banco, la cuenta y el período, y toque <b>Generar reporte</b>.</div></div>
       </section>
 
       <!-- CARGAR (ADMIN) -->
@@ -614,10 +677,11 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxJu64fBhkM72zEQSB93Bpp
 
 const TIPOS = {DEPOSITO:'Depósito', TRANSFERENCIA_RECIBIDA:'Transferencia recibida', CREDITO:'Otro crédito', TRANSFERENCIA_ENVIADA:'Transferencia enviada', DEBITO:'Débito / gasto bancario', AJUSTE:'Ajuste de saldo'};
 const SIGNO = {DEPOSITO:1, TRANSFERENCIA_RECIBIDA:1, CREDITO:1, TRANSFERENCIA_ENVIADA:-1, DEBITO:-1, AJUSTE:1};
-const TITULOS = {resumen:'Panel general', movs:'Movimientos', cargar:'Cargar datos', cuentas:'Cuentas bancarias', ajustes:'Ajustes'};
+const TITULOS = {resumen:'Panel general', movs:'Movimientos', reporte:'Reportes', cargar:'Cargar datos', cuentas:'Cuentas bancarias', ajustes:'Ajustes'};
 const ICONOS = {
   resumen:'<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',
   movs:'<path d="M7 4v16M7 20l-4-4M17 20V4M17 4l4 4"/>',
+  reporte:'<path d="M14 3H6a1 1 0 00-1 1v16a1 1 0 001 1h12a1 1 0 001-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
   cargar:'<path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/>',
   cuentas:'<path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>',
   ajustes:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'
@@ -701,14 +765,14 @@ function iniciar(r) {
   S.token = r.token; S.rol = r.rol;
   $('h_emp').textContent = r.empresa || 'Saldos Bancarios';
   $('h_nom').textContent = r.nombre; $('h_rol').textContent = r.rol === 'ADMIN' ? 'Administrador' : 'Presidencia';
-  const tabs = [['resumen', 'Resumen'], ['movs', 'Movimientos']];
+  const tabs = [['resumen', 'Resumen'], ['movs', 'Movimientos'], ['reporte', 'Reportes']];
   if (r.rol === 'ADMIN') tabs.push(['cargar', 'Cargar'], ['cuentas', 'Cuentas'], ['ajustes', 'Ajustes']);
   $('nav').innerHTML = tabs.map(t => `<button data-v="${t[0]}" onclick="ver('${t[0]}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONOS[t[0]]}</svg>${t[1]}</button>`).join('');
   $('login').classList.add('oculto'); $('app').classList.remove('oculto');
   $('f_tipo').innerHTML = Object.keys(TIPOS).filter(k => k !== 'AJUSTE').map(k => `<option value="${k}">${TIPOS[k]}</option>`).join('');
   $('m_tipo').innerHTML = '<option value="">Todos los tipos</option>' + Object.keys(TIPOS).map(k => `<option value="${k}">${TIPOS[k]}</option>`).join('');
   $('m_res').classList.toggle('oculto', r.rol !== 'ADMIN');
-  limpiarForm(); ver('resumen'); rango('mes');
+  limpiarForm(); initReporte(); ver('resumen'); rango('mes');
   if (r.rol === 'ADMIN') cargarAdmin();
 }
 function ver(v) {
@@ -737,7 +801,7 @@ async function cargar() {
     pintarTodo();
   } catch (e) {}
 }
-function pintarTodo() { pintarResumen(); pintarMovs(); pintarCuentas(); }
+function pintarTodo() { pintarResumen(); pintarMovs(); pintarCuentas(); pintarFiltroRep(); }
 function filtrarBanco(b) { S.banco = b; $('m_cta').value = ''; pintarResumen(); pintarMovs(); }
 const valor = m => SIGNO[m.tipo] * m.monto;
 
@@ -815,6 +879,146 @@ function pintarMovs() {
   const l = S.movs.filter(m => ids.has(m.cuenta_id) && (!s2 || m.cuenta_id === s2) && (!t || m.tipo === t) &&
     (!q || [m.contraparte, m.concepto, m.referencia, m.nro_operacion, m.entidad, m.documento].join(' ').toLowerCase().includes(q)));
   $('m_lista').innerHTML = l.map(filaMov).join('') || '<div class="vacio">Sin movimientos para este filtro.</div>';
+}
+
+/* ---------- reportes ---------- */
+const R = {banco: '', data: null};
+const sumDias = (f, n) => { const d = new Date(f + 'T12:00:00'); d.setDate(d.getDate() + n); return iso(d); };
+function initReporte() {
+  rpRango('mes'); R.data = null;
+  $('rp_tipo').innerHTML = '<option value="">Todos los movimientos</option>' + Object.keys(TIPOS).filter(k => k !== 'AJUSTE').map(k => `<option value="${k}">${TIPOS[k]}</option>`).join('');
+  $('rp_doc').innerHTML = '<div class="vacio">Elija el banco, la cuenta y el período, y toque <b>Generar reporte</b>.</div>';
+  $('rp_imp').disabled = $('rp_xls').disabled = true;
+}
+function rpRango(p) {
+  const h = new Date(), y = h.getFullYear(), m = h.getMonth();
+  const r = p === 'ant' ? [new Date(y, m - 1, 1), new Date(y, m, 0)] : p === 'anio' ? [new Date(y, 0, 1), h] : [new Date(y, m, 1), h];
+  $('rp_desde').value = iso(r[0]); $('rp_hasta').value = iso(r[1]);
+}
+function rpBanco(b) { R.banco = b; pintarFiltroRep(); }
+function pintarFiltroRep() {
+  const bs = bancos();
+  if (R.banco && !bs.includes(R.banco)) R.banco = '';
+  $('rp_bancos').innerHTML = chipsBanco(R.banco, 'rpBanco', true);
+  const sel = $('rp_cta').value, l = S.cuentas.filter(c => !R.banco || bancoDe(c) === R.banco);
+  $('rp_cta').innerHTML = '<option value="">Todas las cuentas' + (R.banco ? ' de ' + esc(R.banco) : '') + '</option>' +
+    l.map(c => `<option value="${esc(c.id)}">${esc(c.banco)} · ${esc(c.tipo || 'Cuenta')} ${esc(c.numero)}</option>`).join('');
+  $('rp_cta').value = l.some(c => c.id === sel) ? sel : '';
+}
+function meses(desde, hasta) {
+  const out = []; let d = desde;
+  while (d <= hasta) {
+    const f = new Date(d + 'T12:00:00');
+    let fin = iso(new Date(f.getFullYear(), f.getMonth() + 1, 0, 12));
+    if (fin > hasta) fin = hasta;
+    out.push([d, fin]); d = sumDias(fin, 1);
+  }
+  return out;
+}
+// El servidor devuelve hasta 500 movimientos por consulta: si se llega al tope, se divide el período.
+async function traerMovs(desde, hasta) {
+  const d = await api('getDatos', S.token, desde, hasta);
+  if (d.movs.length < 500 || desde >= hasta) return d.movs;
+  const mid = sumDias(desde, Math.floor((new Date(hasta) - new Date(desde)) / 864e5 / 2));
+  const [a, b] = await Promise.all([traerMovs(desde, mid), traerMovs(sumDias(mid, 1), hasta)]);
+  return a.concat(b);
+}
+async function generarReporte() {
+  const desde = $('rp_desde').value, hasta = $('rp_hasta').value, hoy = iso(new Date()), idc = $('rp_cta').value, tipo = $('rp_tipo').value;
+  if (!desde || !hasta || desde > hasta) return aviso('Revise las fechas del reporte', true);
+  const ctas = S.cuentas.filter(c => (!R.banco || bancoDe(c) === R.banco) && (!idc || c.id === idc));
+  if (!ctas.length) return aviso('No hay cuentas para ese filtro', true);
+  $('rp_gen').disabled = true; $('rp_gen').textContent = 'Generando…';
+  $('rp_doc').innerHTML = '<div class="vacio">Reuniendo los movimientos…</div>';
+  try {
+    // Se trae desde la fecha inicial hasta hoy para reconstruir el saldo inicial a partir del saldo actual.
+    const partes = await Promise.all(meses(desde, hasta > hoy ? hasta : hoy).map(p => traerMovs(p[0], p[1])));
+    const vistos = new Set(), todos = [];
+    partes.flat().forEach(m => { if (!vistos.has(m.id)) { vistos.add(m.id); todos.push(m); } });
+    const ord = (a, b) => (a.fecha + (a.hora || '') + (a.creado || '') + a.id).localeCompare(b.fecha + (b.hora || '') + (b.creado || '') + b.id);
+    R.data = {desde, hasta, tipo, banco: R.banco, cuenta: idc, generado: new Date(), cuentas: ctas.map(c => {
+      const mc = todos.filter(m => m.cuenta_id === c.id).sort(ord);
+      const apertura = c.saldo - mc.reduce((a, m) => a + valor(m), 0);
+      let s = apertura; const filas = [];
+      mc.forEach(m => { s += valor(m); if (m.fecha <= hasta) filas.push(Object.assign({}, m, {saldo: s})); });
+      const cierre = apertura + filas.reduce((a, m) => a + valor(m), 0);
+      const vis = tipo ? filas.filter(m => m.tipo === tipo) : filas;
+      let ing = 0, egr = 0, aj = 0;
+      vis.forEach(m => { const v = valor(m); if (m.tipo === 'AJUSTE') aj += v; else if (v >= 0) ing += v; else egr -= v; });
+      const porTipo = {};
+      vis.forEach(m => { const k = porTipo[m.tipo] = porTipo[m.tipo] || {n: 0, t: 0}; k.n++; k.t += valor(m); });
+      return {c, apertura, cierre, filas: vis, ing, egr, aj, porTipo};
+    })};
+    pintarReporte();
+    $('rp_imp').disabled = $('rp_xls').disabled = false;
+  } catch (e) { $('rp_doc').innerHTML = '<div class="vacio">No se pudo generar el reporte.</div>'; }
+  finally { $('rp_gen').disabled = false; $('rp_gen').textContent = 'Generar reporte'; }
+}
+function pintarReporte() {
+  const d = R.data, filtro = !!d.tipo;
+  const cuentaTxt = d.cuenta ? (c => `${c.banco} · ${c.tipo || 'Cuenta'} ${c.numero}`)(cta(d.cuenta)) : (d.banco ? 'Todas las cuentas de ' + d.banco : 'Todas las cuentas');
+  const tot = d.cuentas.reduce((a, x) => a + x.filas.length, 0);
+  let h = `<div class="rp-head"><div><div class="emp">${esc($('h_emp').textContent)}</div><h2>Reporte de movimientos bancarios</h2>
+    <p>${esc(cuentaTxt)}${filtro ? ' · Solo: ' + esc(TIPOS[d.tipo]) : ''}</p></div>
+    <div class="rp-meta"><b>Período: ${fch(d.desde)} al ${fch(d.hasta)}</b><br>${tot} movimiento(s)<br>Generado: ${d.generado.toLocaleString('es-PY')}<br>${esc($('h_nom').textContent)}</div></div>`;
+
+  if (d.cuentas.length > 1) {
+    const mons = [...new Set(d.cuentas.map(x => x.c.moneda))];
+    h += '<div class="rp-wrap"><table class="rp-t"><thead><tr><th>Banco / cuenta</th>' + (filtro ? '' : '<th class="r">Saldo inicial</th>') + '<th class="r">Ingresos</th><th class="r">Egresos</th>' + (filtro ? '' : '<th class="r">Saldo final</th>') + '</tr></thead><tbody>' +
+      d.cuentas.map(x => `<tr><td><b>${esc(x.c.banco)}</b> · ${esc(x.c.tipo || 'Cuenta')} ${esc(x.c.numero)}</td>${filtro ? '' : `<td class="r num">${plata(x.apertura, x.c.moneda)}</td>`}
+        <td class="r num in">${plata(x.ing, x.c.moneda)}</td><td class="r num out">${plata(x.egr, x.c.moneda)}</td>${filtro ? '' : `<td class="r num"><b>${plata(x.cierre, x.c.moneda)}</b></td>`}</tr>`).join('') +
+      '</tbody><tfoot>' + mons.map(mon => { const l = d.cuentas.filter(x => x.c.moneda === mon), s = k => l.reduce((a, x) => a + x[k], 0);
+        return `<tr><td>Total ${mon === 'USD' ? 'dólares' : 'guaraníes'}</td>${filtro ? '' : `<td class="r num">${plata(s('apertura'), mon)}</td>`}<td class="r num">${plata(s('ing'), mon)}</td><td class="r num">${plata(s('egr'), mon)}</td>${filtro ? '' : `<td class="r num">${plata(s('cierre'), mon)}</td>`}</tr>`; }).join('') +
+      '</tfoot></table></div>';
+  }
+
+  h += d.cuentas.map(x => {
+    const c = x.c, mon = c.moneda;
+    const k = filtro
+      ? `<div><span>Movimientos</span><b class="num">${x.filas.length}</b></div><div><span>Ingresos</span><b class="num in">${plata(x.ing, mon)}</b></div><div><span>Egresos</span><b class="num out">${plata(x.egr, mon)}</b></div><div><span>Neto</span><b class="num">${plata(x.ing - x.egr, mon)}</b></div>`
+      : `<div><span>Saldo inicial</span><b class="num">${plata(x.apertura, mon)}</b></div><div><span>Ingresos</span><b class="num in">+ ${plata(x.ing, mon)}</b></div><div><span>Egresos</span><b class="num out">− ${plata(x.egr, mon)}</b></div><div><span>Saldo final</span><b class="num">${plata(x.cierre, mon)}</b></div>`;
+    const filas = x.filas.map(m => { const v = valor(m), aj = m.tipo === 'AJUSTE';
+      const det = [m.contraparte, m.concepto && m.concepto !== m.contraparte ? m.concepto : '', m.entidad].filter(Boolean).map(esc).join(' · ');
+      return `<tr class="${aj ? 'aj' : ''}"><td style="white-space:nowrap">${fch(m.fecha)}${m.hora ? '<div class="rp-d">' + esc(m.hora) + '</div>' : ''}</td><td>${esc(TIPOS[m.tipo] || m.tipo)}</td>
+        <td>${det || '—'}${m.referencia ? `<div class="rp-d">Ref. ${esc(m.referencia)}</div>` : ''}</td>
+        <td class="r num in">${v > 0 ? plata(v, mon) : ''}</td><td class="r num out">${v < 0 ? plata(-v, mon) : ''}</td>${filtro ? '' : `<td class="r num">${plata(m.saldo, mon)}</td>`}</tr>`; }).join('');
+    const tipos = Object.keys(x.porTipo);
+    return `<div class="rp-cta"><h3>${avatar(c.banco, true)}<span>${esc(c.banco)} · ${esc(c.tipo || 'Cuenta')} ${esc(c.numero)} <small>${esc(c.denominacion || '')} · ${mon}</small></span></h3>
+      <div class="rp-k">${k}</div>
+      <div class="rp-wrap"><table class="rp-t"><thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th class="r">Ingreso</th><th class="r">Egreso</th>${filtro ? '' : '<th class="r">Saldo</th>'}</tr></thead>
+      <tbody>${filtro ? '' : `<tr class="aj"><td>${fch(d.desde)}</td><td colspan="4">Saldo inicial del período</td><td class="r num">${plata(x.apertura, mon)}</td></tr>`}
+      ${filas || `<tr><td colspan="${filtro ? 5 : 6}" class="rp-d" style="text-align:center;padding:14px">Sin movimientos en el período.</td></tr>`}</tbody>
+      <tfoot><tr><td colspan="3">Totales (${x.filas.length} mov.)</td><td class="r num">${plata(x.ing + Math.max(x.aj, 0), mon)}</td><td class="r num">${plata(x.egr + Math.max(-x.aj, 0), mon)}</td>${filtro ? '' : `<td class="r num">${plata(x.cierre, mon)}</td>`}</tr></tfoot></table></div>
+      ${tipos.length ? `<table class="rp-t rp-tipos"><thead><tr><th>Resumen por tipo</th><th class="r">Cant.</th><th class="r">Total</th></tr></thead><tbody>${tipos.map(t => `<tr><td>${esc(TIPOS[t] || t)}</td><td class="r">${x.porTipo[t].n}</td><td class="r num ${x.porTipo[t].t >= 0 ? 'in' : 'out'}">${plata(Math.abs(x.porTipo[t].t), mon)}</td></tr>`).join('')}</tbody></table>` : ''}
+    </div>`;
+  }).join('');
+  $('rp_doc').innerHTML = h;
+}
+function imprimirReporte() {
+  if (!R.data) return;
+  const t = document.title;
+  document.title = 'Reporte ' + (R.data.banco || 'bancos') + ' ' + R.data.desde + ' a ' + R.data.hasta;
+  window.print();
+  setTimeout(() => document.title = t, 1000);
+}
+function exportarReporte() {
+  const d = R.data; if (!d) return;
+  const q = v => { v = String(v == null ? '' : v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  const n = v => v === '' ? '' : String(Math.round(v * 100) / 100).replace('.', ',');
+  const L = [['Banco', 'Tipo de cuenta', 'Número', 'Moneda', 'Fecha', 'Hora', 'Tipo de movimiento', 'Contraparte', 'Concepto', 'Banco contraparte', 'Referencia', 'Ingreso', 'Egreso', 'Saldo']];
+  d.cuentas.forEach(x => {
+    const c = x.c, base = [c.banco, c.tipo, c.numero, c.moneda];
+    if (!d.tipo) L.push(base.concat([fch(d.desde), '', 'SALDO INICIAL', '', '', '', '', '', '', n(x.apertura)]));
+    x.filas.forEach(m => { const v = valor(m);
+      L.push(base.concat([fch(m.fecha), m.hora || '', TIPOS[m.tipo] || m.tipo, m.contraparte, m.concepto, m.entidad, m.referencia, v > 0 ? n(v) : '', v < 0 ? n(-v) : '', d.tipo ? '' : n(m.saldo)])); });
+    if (!d.tipo) L.push(base.concat([fch(d.hasta), '', 'SALDO FINAL', '', '', '', '', n(x.ing + Math.max(x.aj, 0)), n(x.egr + Math.max(-x.aj, 0)), n(x.cierre)]));
+  });
+  const blob = new Blob(['﻿sep=;\r\n' + L.map(r => r.map(q).join(';')).join('\r\n')], {type: 'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `reporte_${(d.banco || 'bancos').replace(/\W+/g, '_')}_${d.desde}_a_${d.hasta}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
 /* ---------- admin: carga ---------- */

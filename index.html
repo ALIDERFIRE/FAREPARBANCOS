@@ -447,6 +447,11 @@
   .wa-hd{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
   .wa-prev img{display:block;width:100%;border-radius:12px;border:1px solid var(--line)}
   @media print{.wa-modal{display:none!important}}
+  .cv-box{max-width:860px}
+  .cv-tit{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .cv-body{background:#f4eded;border-radius:12px;padding:10px;min-height:220px;display:flex;flex-direction:column;gap:10px}
+  .cv-body img,.cv-body canvas{display:block;width:100%;height:auto;border-radius:6px;background:#fff;box-shadow:0 1px 4px rgba(26,10,10,.12)}
+  .cv-body .vacio{margin:auto}
 
   /* ---------- RESPONSIVE ---------- */
   @media(max-width:860px){
@@ -688,11 +693,21 @@
     <div class="nota" id="wa_nota"></div>
   </div>
 </div>
+<div id="cv_modal" class="wa-modal oculto" onclick="if(event.target===this)cerrarComp()">
+  <div class="wa-box cv-box">
+    <div class="wa-hd"><b id="cv_tit" class="cv-tit">Comprobante</b><button class="btn sec2 mini" onclick="cerrarComp()">Cerrar</button></div>
+    <div id="cv_body" class="cv-body"></div>
+    <div class="acc" style="margin-top:14px">
+      <button class="btn" id="cv_desc" onclick="descargarComp()" disabled>Descargar</button>
+      <a class="btn sec2 oculto" id="cv_drive" target="_blank" rel="noopener">Abrir en Drive</a>
+    </div>
+  </div>
+</div>
 <div id="msg" class="oculto"></div>
 
 <script>
 /* === URL de la aplicación web de Apps Script (termina en /exec) === */
-const API_URL = 'https://script.google.com/macros/s/AKfycbxJu64fBhkM72zEQSB93BpprfstH88F__jtY-e7_FMBjEKK9-5ezDdvOb7_MJYNcXjc/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxFd9iYMYasvCbLQPFipWtFMVfTCIaq-pgZIIV_H2C6pJ52HIn4DJAmx94959qc924m/exec';
 
 const TIPOS = {DEPOSITO:'Depósito', TRANSFERENCIA_RECIBIDA:'Transferencia recibida', CREDITO:'Otro crédito', TRANSFERENCIA_ENVIADA:'Transferencia enviada', DEBITO:'Débito / gasto bancario', AJUSTE:'Ajuste de saldo'};
 const SIGNO = {DEPOSITO:1, TRANSFERENCIA_RECIBIDA:1, CREDITO:1, TRANSFERENCIA_ENVIADA:-1, DEBITO:-1, AJUSTE:1};
@@ -830,7 +845,7 @@ function filaMov(m) {
   return `<div class="mov"><div class="ic ${aj ? 'n' : v >= 0 ? 'g' : 'r'}">${aj ? '≈' : v >= 0 ? '↓' : '↑'}</div>
     <div class="tx"><div class="t">${esc(m.contraparte || TIPOS[m.tipo] || m.tipo)}</div><div class="d">${m.contraparte ? esc(TIPOS[m.tipo]) + ' · ' : ''}${det}</div></div>
     <div class="m num ${v >= 0 ? 'in' : 'out'}">${v >= 0 ? '+' : '−'} ${plata(Math.abs(v), c.moneda)}<div>
-    ${/^https:\/\//.test(m.comprobante_url) ? `<a href="${esc(m.comprobante_url)}" target="_blank" rel="noopener">comprobante</a> ` : ''}
+    ${/^https:\/\//.test(m.comprobante_url) ? `<a href="#" onclick="verComp('${esc(m.comprobante_url)}');return false">comprobante</a> ` : ''}
     ${S.rol === 'ADMIN' ? `<button class="btn sec2 mini" style="height:24px;padding:0 8px;font-size:11.5px" onclick="anular('${esc(m.id)}')">Anular</button>` : ''}</div></div></div>`;
 }
 
@@ -884,7 +899,7 @@ function pintarResumen() {
   $('r_res').innerHTML = res.length ? '<table><tr><th>Banco / cuenta</th><th>Período</th><th>Saldo anterior</th><th>Ingresos</th><th>Egresos</th><th>Saldo final</th><th></th></tr>' +
     res.map(r => { const c = cta(r.cuenta_id); return `<tr title="${esc(r.detalle)}"><td><b>${esc(c.banco)}</b><br><small style="color:var(--mute)">${esc(c.numero)}</small></td><td>${fch(r.desde)} a ${fch(r.hasta)}<br><span class="tag">${r.movimientos} mov. · ${r.origen === 'EXTRACTO' ? 'extracto' : 'sistema'}</span></td>
       <td class="num">${plata(r.saldo_anterior, c.moneda)}</td><td class="in num">+ ${plata(r.ingresos, c.moneda)}</td><td class="out num">− ${plata(r.egresos, c.moneda)}</td><td class="num"><b>${plata(r.saldo_final, c.moneda)}</b></td>
-      <td>${/^https:\/\//.test(r.archivo_url) ? `<a href="${esc(r.archivo_url)}" target="_blank" rel="noopener">PDF</a>` : ''}</td></tr>`; }).join('') + '</table>'
+      <td>${/^https:\/\//.test(r.archivo_url) ? `<a href="#" onclick="verComp('${esc(r.archivo_url)}');return false">ver PDF</a>` : ''}</td></tr>`; }).join('') + '</table>'
     : '<div class="vacio">Todavía no hay resúmenes guardados.</div>';
 }
 
@@ -1188,6 +1203,65 @@ function waReporte() {
     pie: pieWa()
   }, `resumen_${d.desde}_a_${d.hasta}.png`);
 }
+
+/* ---------- visor de comprobantes ---------- */
+const CV = {n: 0, blobUrl: '', nombre: ''};
+let pdfjsP = null;
+function cargarPdfJs() {
+  if (!pdfjsP) pdfjsP = new Promise((ok, mal) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    sc.onload = () => { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; ok(pdfjsLib); };
+    sc.onerror = () => { pdfjsP = null; mal(new Error('No se pudo cargar el visor de PDF')); };
+    document.head.appendChild(sc);
+  });
+  return pdfjsP;
+}
+async function verComp(url) {
+  const n = ++CV.n, body = $('cv_body');
+  $('cv_tit').textContent = 'Comprobante';
+  body.innerHTML = '<div class="vacio">Cargando comprobante…</div>';
+  $('cv_desc').disabled = true;
+  $('cv_drive').href = url; $('cv_drive').classList.toggle('oculto', S.rol !== 'ADMIN');
+  $('cv_modal').classList.remove('oculto');
+  try {
+    const r = await api('verComprobante', S.token, url);
+    if (n !== CV.n) return; // se abrió otro comprobante mientras cargaba
+    const bytes = Uint8Array.from(atob(r.base64), ch => ch.charCodeAt(0));
+    if (CV.blobUrl) URL.revokeObjectURL(CV.blobUrl);
+    CV.blobUrl = URL.createObjectURL(new Blob([bytes], {type: r.tipo})); CV.nombre = r.nombre;
+    $('cv_tit').textContent = r.nombre; $('cv_desc').disabled = false;
+    if (/^image\//.test(r.tipo)) { body.innerHTML = `<img src="${CV.blobUrl}" alt="Comprobante">`; return; }
+    if (r.tipo !== 'application/pdf') { body.innerHTML = '<div class="vacio">Este tipo de archivo no se puede mostrar aquí. Use Descargar.</div>'; return; }
+    const lib = await cargarPdfJs();
+    const pdf = await lib.getDocument({data: bytes}).promise;
+    if (n !== CV.n) return;
+    body.innerHTML = '';
+    const ancho = Math.max(body.clientWidth - 20, 300), dpr = window.devicePixelRatio || 1;
+    for (let i = 1; i <= Math.min(pdf.numPages, 20); i++) {
+      const pg = await pdf.getPage(i);
+      const vp = pg.getViewport({scale: Math.min(ancho / pg.getViewport({scale: 1}).width * dpr, 3)});
+      const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+      body.appendChild(c);
+      await pg.render({canvasContext: c.getContext('2d'), viewport: vp}).promise;
+      if (n !== CV.n) return;
+    }
+    if (pdf.numPages > 20) body.insertAdjacentHTML('beforeend', `<div class="vacio">Se muestran 20 de ${pdf.numPages} páginas. Use Descargar para verlo completo.</div>`);
+  } catch (e) {
+    if (n === CV.n) body.innerHTML = '<div class="vacio">No se pudo mostrar el comprobante.</div>';
+  }
+}
+function cerrarComp() { CV.n++; $('cv_modal').classList.add('oculto'); $('cv_body').innerHTML = ''; }
+function descargarComp() {
+  if (!CV.blobUrl) return;
+  const a = document.createElement('a'); a.href = CV.blobUrl; a.download = CV.nombre || 'comprobante';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (!$('cv_modal').classList.contains('oculto')) cerrarComp();
+  else if (!$('wa_modal').classList.contains('oculto')) cerrarWa();
+});
 
 /* ---------- admin: carga ---------- */
 const CAMPOS = ['cuenta_id', 'tipo', 'fecha', 'hora', 'monto', 'contraparte', 'documento', 'entidad', 'referencia', 'nro_operacion', 'firmante', 'concepto'];

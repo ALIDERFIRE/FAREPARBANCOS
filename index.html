@@ -424,6 +424,11 @@
   .rp-d{color:var(--mute);font-size:11.5px}
   .rp-tipos{margin-top:10px;max-width:520px}
   .rp-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+  .rp-t tr.grp td{background:var(--soft);font-weight:700;border-top:2px solid var(--line)}
+  .rp-t tr.sub td{font-weight:600;color:var(--ink2)}
+  .rp-bar{height:6px;background:var(--line2);border-radius:4px;margin-top:4px;min-width:60px}
+  .rp-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#dc2626,#f87171)}
+  .rp-k b.chico{font-size:13px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   @page{size:A4;margin:12mm}
   @media print{
     body{background:#fff;font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -534,14 +539,20 @@
       <!-- REPORTES -->
       <section id="v-reporte" class="oculto">
         <div class="card rp-no-print">
-          <h2>Reporte de movimientos <small>por banco, cuenta y período</small></h2>
+          <h2>Reportes <small>por banco, cuenta y período</small></h2>
+          <div class="seg">
+            <button id="rp_m_movs" class="on" onclick="rpModo('movs')">Movimientos</button>
+            <button id="rp_m_prov" onclick="rpModo('prov')">Pagos a proveedores</button>
+          </div>
           <div class="chips" id="rp_bancos" style="margin:0 0 14px"></div>
           <div class="f2">
             <div class="fld"><label>Cuenta</label><select id="rp_cta"></select></div>
             <div class="fld"><label>Desde <em>*</em></label><input type="date" id="rp_desde"></div>
             <div class="fld"><label>Hasta <em>*</em></label><input type="date" id="rp_hasta"></div>
-            <div class="fld"><label>Tipo de movimiento</label><select id="rp_tipo"></select></div>
+            <div class="fld"><label id="rp_tipo_l">Tipo de movimiento</label><select id="rp_tipo"></select></div>
+            <div class="fld oculto" id="rp_prov_f"><label>Proveedor</label><input id="rp_prov" list="rp_prov_l" placeholder="Todos (o escriba nombre / RUC)"><datalist id="rp_prov_l"></datalist></div>
           </div>
+          <label class="oculto" id="rp_det_f" style="display:flex;align-items:center;gap:10px;margin-top:14px;cursor:pointer;font-size:13.5px"><input type="checkbox" id="rp_det" checked> Incluir el detalle de cada pago</label>
           <div class="chips" style="margin:14px 0 0">
             <button class="chip" onclick="rpRango('mes')">Este mes</button>
             <button class="chip" onclick="rpRango('ant')">Mes anterior</button>
@@ -916,12 +927,27 @@ function pintarMovs() {
 }
 
 /* ---------- reportes ---------- */
-const R = {banco: '', data: null};
+const R = {banco: '', data: null, modo: 'movs'};
+const EGRESOS = ['TRANSFERENCIA_ENVIADA', 'DEBITO'];
 const sumDias = (f, n) => { const d = new Date(f + 'T12:00:00'); d.setDate(d.getDate() + n); return iso(d); };
+const ordMov = (a, b) => (a.fecha + (a.hora || '') + (a.creado || '') + a.id).localeCompare(b.fecha + (b.hora || '') + (b.creado || '') + b.id);
+const nomProv = m => String(m.contraparte || '').trim().replace(/\s+/g, ' ') || String(m.concepto || '').trim().replace(/\s+/g, ' ') || 'Sin identificar';
+const rpCuentaTxt = d => d.cuenta ? (c => `${c.banco} · ${c.tipo || 'Cuenta'} ${c.numero}`)(cta(d.cuenta)) : (d.banco ? 'Todas las cuentas de ' + d.banco : 'Todas las cuentas');
 function initReporte() {
-  rpRango('mes'); R.data = null;
-  $('rp_tipo').innerHTML = '<option value="">Todos los movimientos</option>' + Object.keys(TIPOS).filter(k => k !== 'AJUSTE').map(k => `<option value="${k}">${TIPOS[k]}</option>`).join('');
-  $('rp_doc').innerHTML = '<div class="vacio">Elija el banco, la cuenta y el período, y toque <b>Generar reporte</b>.</div>';
+  rpRango('mes'); rpModo(R.modo);
+}
+function rpModo(m) {
+  R.modo = m; R.data = null;
+  const prov = m === 'prov';
+  $('rp_m_movs').classList.toggle('on', !prov); $('rp_m_prov').classList.toggle('on', prov);
+  $('rp_prov_f').classList.toggle('oculto', !prov); $('rp_det_f').classList.toggle('oculto', !prov);
+  $('rp_tipo_l').textContent = prov ? 'Tipo de pago' : 'Tipo de movimiento';
+  const ks = prov ? EGRESOS : Object.keys(TIPOS).filter(k => k !== 'AJUSTE');
+  $('rp_tipo').innerHTML = `<option value="">${prov ? 'Todos los pagos (transferencias y débitos)' : 'Todos los movimientos'}</option>` + ks.map(k => `<option value="${k}">${TIPOS[k]}</option>`).join('');
+  $('rp_prov_l').innerHTML = prov ? [...new Set(S.movs.filter(x => EGRESOS.includes(x.tipo)).map(nomProv))].sort().map(n => `<option value="${esc(n)}">`).join('') : '';
+  $('rp_doc').innerHTML = prov
+    ? '<div class="vacio">Elija el banco, la cuenta y el período, y toque <b>Generar reporte</b> para ver cuánto se pagó a cada proveedor.</div>'
+    : '<div class="vacio">Elija el banco, la cuenta y el período, y toque <b>Generar reporte</b>.</div>';
   $('rp_imp').disabled = $('rp_xls').disabled = $('rp_wa').disabled = true;
 }
 function rpRango(p) {
@@ -957,6 +983,98 @@ async function traerMovs(desde, hasta) {
   const [a, b] = await Promise.all([traerMovs(desde, mid), traerMovs(sumDias(mid, 1), hasta)]);
   return a.concat(b);
 }
+async function juntarMovs(desde, hasta) { // trae el período mes a mes y quita repetidos
+  const partes = await Promise.all(meses(desde, hasta).map(p => traerMovs(p[0], p[1])));
+  const vistos = new Set(), todos = [];
+  partes.flat().forEach(m => { if (!vistos.has(m.id)) { vistos.add(m.id); todos.push(m); } });
+  return todos;
+}
+
+/* ---------- reporte de pagos a proveedores ---------- */
+function armarProveedores(todos, desde, hasta, ctas, tipo, idc) {
+  const ids = new Set(ctas.map(c => c.id)), q = $('rp_prov').value.trim().toLowerCase(), tipos = tipo ? [tipo] : EGRESOS, grupos = {};
+  todos.filter(m => ids.has(m.cuenta_id) && m.fecha >= desde && m.fecha <= hasta && tipos.includes(m.tipo)).forEach(m => {
+    const c = cta(m.cuenta_id), nombre = nomProv(m);
+    if (q && !(nombre + ' ' + (m.documento || '')).toLowerCase().includes(q)) return;
+    const key = c.moneda + '|' + nombre.toUpperCase();
+    const g = grupos[key] = grupos[key] || {mon: c.moneda, nombre, doc: '', n: 0, total: 0, ultima: '', pagos: []};
+    if (!g.doc && m.documento) g.doc = m.documento;
+    g.n++; g.total += Number(m.monto) || 0; if (m.fecha > g.ultima) g.ultima = m.fecha;
+    g.pagos.push(m);
+  });
+  const lista = Object.values(grupos);
+  const mons = [...new Set(lista.map(g => g.mon))].sort((a, b) => a === 'GS' ? -1 : b === 'GS' ? 1 : a.localeCompare(b));
+  return {modo: 'prov', desde, hasta, tipo, banco: R.banco, cuenta: idc, q: $('rp_prov').value.trim(), detalle: $('rp_det').checked, generado: new Date(),
+    monedas: mons.map(mon => {
+      const provs = lista.filter(g => g.mon === mon).sort((a, b) => b.total - a.total);
+      provs.forEach(g => g.pagos.sort(ordMov));
+      return {mon, provs, total: provs.reduce((a, g) => a + g.total, 0), n: provs.reduce((a, g) => a + g.n, 0)};
+    })};
+}
+function pintarProveedores() {
+  const d = R.data;
+  const nProv = d.monedas.reduce((a, x) => a + x.provs.length, 0), nPag = d.monedas.reduce((a, x) => a + x.n, 0);
+  let h = `<div class="rp-head"><div><div class="emp">${esc($('h_emp').textContent)}</div><h2>Reporte de pagos a proveedores</h2>
+    <p>${esc(rpCuentaTxt(d))}${d.tipo ? ' · Solo: ' + esc(TIPOS[d.tipo]) : ' · Transferencias enviadas y débitos'}${d.q ? ' · Búsqueda: “' + esc(d.q) + '”' : ''}</p></div>
+    <div class="rp-meta"><b>Período: ${fch(d.desde)} al ${fch(d.hasta)}</b><br>${nProv} proveedor(es) · ${nPag} pago(s)<br>Generado: ${d.generado.toLocaleString('es-PY')}<br>${esc($('h_nom').textContent)}</div></div>`;
+  if (!nPag) { $('rp_doc').innerHTML = h + '<div class="vacio">No hay pagos a proveedores en el período y filtro elegidos.</div>'; return; }
+
+  h += d.monedas.map(x => {
+    const mon = x.mon, top = x.provs[0];
+    const k = `<div><span>Proveedores</span><b class="num">${x.provs.length}</b></div><div><span>Pagos</span><b class="num">${x.n}</b></div>
+      <div><span>Total pagado</span><b class="num out">${plata(x.total, mon)}</b></div>
+      <div><span>Mayor proveedor</span><b class="chico" title="${esc(top.nombre)}">${esc(top.nombre)}</b><span class="num" style="text-transform:none;letter-spacing:0">${plata(top.total, mon)}</span></div>`;
+    const ranking = x.provs.map((g, i) => { const pc = x.total ? g.total / x.total * 100 : 0;
+      return `<tr><td class="r">${i + 1}</td><td><b>${esc(g.nombre)}</b></td><td>${esc(g.doc) || '—'}</td><td class="r">${g.n}</td><td style="white-space:nowrap">${fch(g.ultima)}</td>
+        <td class="r num out"><b>${plata(g.total, mon)}</b></td><td class="r" style="min-width:90px">${pc.toLocaleString('es-PY', {maximumFractionDigits: 1})}%<div class="rp-bar"><i style="width:${pc}%"></i></div></td></tr>`; }).join('');
+    let det = '';
+    if (d.detalle) {
+      det = `<div class="rp-cta"><h3>Detalle de pagos por proveedor <small>${mon === 'USD' ? 'dólares' : 'guaraníes'}</small></h3>
+        <div class="rp-wrap"><table class="rp-t"><thead><tr><th>Fecha</th><th>Banco / cuenta</th><th>Tipo</th><th>Concepto</th><th class="r">Monto</th></tr></thead><tbody>` +
+        x.provs.map(g => `<tr class="grp"><td colspan="5">${esc(g.nombre)}${g.doc ? ' <span class="rp-d">· RUC/CI ' + esc(g.doc) + '</span>' : ''}</td></tr>` +
+          g.pagos.map(m => { const c = cta(m.cuenta_id);
+            const con = [m.concepto && m.concepto !== m.contraparte ? m.concepto : '', m.entidad].filter(Boolean).map(esc).join(' · ');
+            return `<tr><td style="white-space:nowrap">${fch(m.fecha)}${m.hora ? '<div class="rp-d">' + esc(m.hora) + '</div>' : ''}</td><td>${esc(c.banco)} ${esc(c.numero)}</td><td>${esc(TIPOS[m.tipo] || m.tipo)}</td>
+              <td>${con || '—'}${m.referencia ? `<div class="rp-d">Ref. ${esc(m.referencia)}</div>` : ''}${m.nro_operacion ? `<div class="rp-d">Op. ${esc(m.nro_operacion)}</div>` : ''}</td><td class="r num">${plata(m.monto, mon)}</td></tr>`; }).join('') +
+          `<tr class="sub"><td colspan="4" class="r">Subtotal ${esc(g.nombre)} (${g.n} pago${g.n > 1 ? 's' : ''})</td><td class="r num">${plata(g.total, mon)}</td></tr>`).join('') +
+        `</tbody><tfoot><tr><td colspan="4">Total pagado a proveedores (${x.n} pagos)</td><td class="r num">${plata(x.total, mon)}</td></tr></tfoot></table></div></div>`;
+    }
+    return `<div class="rp-cta"><h3>Resumen por proveedor <small>${mon === 'USD' ? 'dólares' : 'guaraníes'}</small></h3>
+      <div class="rp-k">${k}</div>
+      <div class="rp-wrap"><table class="rp-t"><thead><tr><th class="r">#</th><th>Proveedor</th><th>RUC / CI</th><th class="r">Pagos</th><th>Último pago</th><th class="r">Total pagado</th><th class="r">% del total</th></tr></thead>
+      <tbody>${ranking}</tbody><tfoot><tr><td colspan="3">Total (${x.provs.length} proveedores)</td><td class="r">${x.n}</td><td></td><td class="r num">${plata(x.total, mon)}</td><td class="r">100%</td></tr></tfoot></table></div></div>${det}`;
+  }).join('');
+  $('rp_doc').innerHTML = h;
+}
+function exportarProveedores() {
+  const d = R.data, L = [];
+  const n = v => String(Math.round(v * 100) / 100).replace('.', ',');
+  L.push(['PAGOS A PROVEEDORES', $('h_emp').textContent, 'Período ' + fch(d.desde) + ' al ' + fch(d.hasta), rpCuentaTxt(d)], []);
+  L.push(['Moneda', '#', 'Proveedor', 'RUC / CI', 'Cantidad de pagos', 'Último pago', 'Total pagado', '% del total']);
+  d.monedas.forEach(x => {
+    x.provs.forEach((g, i) => L.push([x.mon, i + 1, g.nombre, g.doc, g.n, fch(g.ultima), n(g.total), n(x.total ? g.total / x.total * 100 : 0)]));
+    L.push([x.mon, '', 'TOTAL', '', x.n, '', n(x.total), '100']);
+  });
+  L.push([], ['DETALLE DE PAGOS'], ['Moneda', 'Proveedor', 'RUC / CI', 'Fecha', 'Hora', 'Banco', 'Cuenta', 'Tipo', 'Concepto', 'Banco contraparte', 'Referencia', 'N° operación', 'Monto']);
+  d.monedas.forEach(x => x.provs.forEach(g => g.pagos.forEach(m => { const c = cta(m.cuenta_id);
+    L.push([x.mon, g.nombre, g.doc, fch(m.fecha), m.hora || '', c.banco, c.numero, TIPOS[m.tipo] || m.tipo, m.concepto, m.entidad, m.referencia, m.nro_operacion, n(m.monto)]); })));
+  return L;
+}
+function waProveedores() {
+  const d = R.data;
+  const nProv = d.monedas.reduce((a, x) => a + x.provs.length, 0), nPag = d.monedas.reduce((a, x) => a + x.n, 0);
+  abrirWa({
+    empresa: $('h_emp').textContent, titulo: 'Pagos a proveedores',
+    sub: 'Período ' + fch(d.desde) + ' al ' + fch(d.hasta), sub2: rpCuentaTxt(d) + ' · ' + nProv + ' proveedores · ' + nPag + ' pagos',
+    totales: d.monedas.map(x => ({label: 'Total pagado ' + (x.mon === 'USD' ? 'en dólares' : 'en guaraníes'), valor: plata(x.total, x.mon)})),
+    cuentas: [],
+    movsTit: 'Proveedores con mayores pagos',
+    movs: d.monedas.flatMap(x => x.provs.map(g => ({g, mon: x.mon}))).sort((a, b) => b.g.total - a.g.total).slice(0, 10).map(o => ({
+      t: o.g.nombre, d: `${o.g.n} pago${o.g.n > 1 ? 's' : ''} · último ${fch(o.g.ultima)}${o.g.doc ? ' · RUC ' + o.g.doc : ''}`, v: '− ' + plata(o.g.total, o.mon), cls: 'out'})),
+    pie: pieWa()
+  }, `pagos_proveedores_${d.desde}_a_${d.hasta}.png`);
+}
+
 async function generarReporte() {
   const desde = $('rp_desde').value, hasta = $('rp_hasta').value, hoy = iso(new Date()), idc = $('rp_cta').value, tipo = $('rp_tipo').value;
   if (!desde || !hasta || desde > hasta) return aviso('Revise las fechas del reporte', true);
@@ -965,13 +1083,16 @@ async function generarReporte() {
   $('rp_gen').disabled = true; $('rp_gen').textContent = 'Generando…';
   $('rp_doc').innerHTML = '<div class="vacio">Reuniendo los movimientos…</div>';
   try {
+    if (R.modo === 'prov') {
+      R.data = armarProveedores(await juntarMovs(desde, hasta), desde, hasta, ctas, tipo, idc);
+      pintarProveedores();
+      $('rp_imp').disabled = $('rp_xls').disabled = $('rp_wa').disabled = false;
+      return;
+    }
     // Se trae desde la fecha inicial hasta hoy para reconstruir el saldo inicial a partir del saldo actual.
-    const partes = await Promise.all(meses(desde, hasta > hoy ? hasta : hoy).map(p => traerMovs(p[0], p[1])));
-    const vistos = new Set(), todos = [];
-    partes.flat().forEach(m => { if (!vistos.has(m.id)) { vistos.add(m.id); todos.push(m); } });
-    const ord = (a, b) => (a.fecha + (a.hora || '') + (a.creado || '') + a.id).localeCompare(b.fecha + (b.hora || '') + (b.creado || '') + b.id);
+    const todos = await juntarMovs(desde, hasta > hoy ? hasta : hoy);
     R.data = {desde, hasta, tipo, banco: R.banco, cuenta: idc, generado: new Date(), cuentas: ctas.map(c => {
-      const mc = todos.filter(m => m.cuenta_id === c.id).sort(ord);
+      const mc = todos.filter(m => m.cuenta_id === c.id).sort(ordMov);
       const apertura = c.saldo - mc.reduce((a, m) => a + valor(m), 0);
       let s = apertura; const filas = [];
       mc.forEach(m => { s += valor(m); if (m.fecha <= hasta) filas.push(Object.assign({}, m, {saldo: s})); });
@@ -1031,7 +1152,7 @@ function pintarReporte() {
 function imprimirReporte() {
   if (!R.data) return;
   const t = document.title;
-  document.title = 'Reporte ' + (R.data.banco || 'bancos') + ' ' + R.data.desde + ' a ' + R.data.hasta;
+  document.title = (R.data.modo === 'prov' ? 'Pagos a proveedores ' : 'Reporte ') + (R.data.banco || 'bancos') + ' ' + R.data.desde + ' a ' + R.data.hasta;
   window.print();
   setTimeout(() => document.title = t, 1000);
 }
@@ -1039,6 +1160,7 @@ function exportarReporte() {
   const d = R.data; if (!d) return;
   const q = v => { v = String(v == null ? '' : v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   const n = v => v === '' ? '' : String(Math.round(v * 100) / 100).replace('.', ',');
+  if (d.modo === 'prov') return bajarCsv(exportarProveedores().map(r => r.map(q).join(';')), `pagos_proveedores_${(d.banco || 'bancos').replace(/\W+/g, '_')}_${d.desde}_a_${d.hasta}.csv`);
   const L = [['Banco', 'Tipo de cuenta', 'Número', 'Moneda', 'Fecha', 'Hora', 'Tipo de movimiento', 'Contraparte', 'Concepto', 'Banco contraparte', 'Referencia', 'Ingreso', 'Egreso', 'Saldo']];
   d.cuentas.forEach(x => {
     const c = x.c, base = [c.banco, c.tipo, c.numero, c.moneda];
@@ -1047,10 +1169,12 @@ function exportarReporte() {
       L.push(base.concat([fch(m.fecha), m.hora || '', TIPOS[m.tipo] || m.tipo, m.contraparte, m.concepto, m.entidad, m.referencia, v > 0 ? n(v) : '', v < 0 ? n(-v) : '', d.tipo ? '' : n(m.saldo)])); });
     if (!d.tipo) L.push(base.concat([fch(d.hasta), '', 'SALDO FINAL', '', '', '', '', n(x.ing + Math.max(x.aj, 0)), n(x.egr + Math.max(-x.aj, 0)), n(x.cierre)]));
   });
-  const blob = new Blob(['﻿sep=;\r\n' + L.map(r => r.map(q).join(';')).join('\r\n')], {type: 'text/csv;charset=utf-8'});
+  bajarCsv(L.map(r => r.map(q).join(';')), `reporte_${(d.banco || 'bancos').replace(/\W+/g, '_')}_${d.desde}_a_${d.hasta}.csv`);
+}
+function bajarCsv(lineas, nombre) {
+  const blob = new Blob(['﻿sep=;\r\n' + lineas.join('\r\n')], {type: 'text/csv;charset=utf-8'});
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `reporte_${(d.banco || 'bancos').replace(/\W+/g, '_')}_${d.desde}_a_${d.hasta}.csv`;
+  a.href = URL.createObjectURL(blob); a.download = nombre;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
@@ -1187,6 +1311,7 @@ function waPanel() {
 }
 function waReporte() {
   const d = R.data; if (!d) return;
+  if (d.modo === 'prov') return waProveedores();
   const filtro = !!d.tipo, mons = [...new Set(d.cuentas.map(x => x.c.moneda))];
   const cuentaTxt = d.cuenta ? (c => `${c.banco} · ${c.tipo || 'Cuenta'} ${c.numero}`)(cta(d.cuenta)) : (d.banco ? 'Todas las cuentas de ' + d.banco : 'Todas las cuentas');
   abrirWa({
